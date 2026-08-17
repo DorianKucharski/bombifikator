@@ -1,0 +1,49 @@
+[logging]
+level = "INFO"
+
+[codex]
+raw_dir = "data/codex/raw"
+characters_dir = "data/codex/characters"
+ledger_path = "data/codex/processed.json"
+requests_per_second = 1.0
+timeout_seconds = 30.0
+min_wikitext_length = 200
+
+[codex.extraction]
+model = "claude-opus-5"
+max_tokens = 4000
+effort = "low"
+concurrency = 6
+max_wikitext_characters = 24000
+
+[harvester]
+episodes_dir = "data/episodes"
+frames_dir = "data/frames"
+format_selector = "bv*[vcodec^=avc1][ext=mp4]/bv*[ext=mp4]/bv*/b"
+player_clients = ["default", "android", "tv_simply"]
+
+[harvester.frames]
+content_threshold = 27.0
+min_shot_seconds = 0.4
+sample_stride_seconds = 3.0
+min_mean_luminance = 12.0
+min_laplacian_variance = 60.0
+min_pixel_standard_deviation = 18.0
+
+[[harvester.sources]]
+name = "kapitan-bomba-odcinki"
+url = "https://www.youtube.com/playlist?list=PLHtUOYOPwzJGGZkjR-FspIL17YtSBGaCR"
+
+[[harvester.sources]]
+name = "zemsta-faraona"
+url = "https://www.youtube.com/watch?v=iLW3ivu8IiI"
+
+[[harvester.sources]]
+name = "kutapokalipsa"
+url = "https://www.youtube.com/watch?v=eL5Cmj70rTc"
+
+[[codex.sites]]
+name = "bombaverse"
+api_url = "https://bombaversearchive.fandom.com/pl/api.php"
+article_base_url = "https://bombaversearchive.fandom.com/pl/wiki/"
+category_namespace = "Kategoria"
