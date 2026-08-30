@@ -1,13 +1,31 @@
 from __future__ import annotations
 
+import base64
 import json
-from typing import Any
+from typing import Any, Sequence
 
 import anthropic
 
 from sharedkernel.logger import get_logger
 
 LOGGER = get_logger("clients.anthropic")
+
+_IMAGE_MEDIA_TYPE = "image/png"
+
+
+def _image_block(image: bytes) -> dict[str, Any]:
+    return {
+        "type": "image",
+        "source": {
+            "type": "base64",
+            "media_type": _IMAGE_MEDIA_TYPE,
+            "data": base64.standard_b64encode(image).decode("ascii"),
+        },
+    }
+
+
+def _user_content(user_prompt: str, images: Sequence[bytes]) -> list[dict[str, Any]]:
+    return [_image_block(image) for image in images] + [{"type": "text", "text": user_prompt}]
 
 
 class StructuredExtractionClient:
@@ -17,7 +35,8 @@ class StructuredExtractionClient:
         self._max_tokens = max_tokens
         self._effort = effort
 
-    def extract(self, system_prompt: str, user_prompt: str, json_schema: dict[str, Any]) -> dict[str, Any] | None:
+    def extract(self, system_prompt: str, user_prompt: str, json_schema: dict[str, Any],
+                images: Sequence[bytes] = ()) -> dict[str, Any] | None:
         response = self._client.messages.create(
                 model=self._model,
                 max_tokens=self._max_tokens,
@@ -26,7 +45,7 @@ class StructuredExtractionClient:
                     "effort": self._effort,
                     "format": {"type": "json_schema", "schema": json_schema},
                 },
-                messages=[{"role": "user", "content": user_prompt}],
+                messages=[{"role": "user", "content": _user_content(user_prompt, images)}],
         )
         if response.stop_reason == "refusal":
             LOGGER.warning("extraction refused: category=%s",
