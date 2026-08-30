@@ -5,15 +5,18 @@ from pathlib import Path
 
 import cv2
 import numpy
+import tomli_w
 
 from codex.character_models import Character, ReferenceCoverage
 from codex.character_store import CharacterStore
 from sharedkernel.logger import get_logger
 from sharedkernel.utils.paths import ensure_directory
-from training.caption_builder import build_caption, character_token
+from training.caption_builder import build_caption, tokens_by_slug
 from training.training_config import DatasetConfig
 
 LOGGER = get_logger("training.dataset_builder")
+
+TOKEN_MAP_FILE_NAME = "tokens.toml"
 
 _WHITE = 255
 
@@ -23,6 +26,7 @@ class DatasetReport:
     characters_written: int
     images_written: int
     characters_skipped: tuple[str, ...]
+    tokens_path: Path
 
 
 def flattened_on_white(image: numpy.ndarray) -> numpy.ndarray:
@@ -46,12 +50,11 @@ def trainable_characters(characters: tuple[Character, ...]) -> tuple[Character, 
     return tuple(character for character in characters if character.reference_coverage is ReferenceCoverage.FULL)
 
 
-def _write_character(config: DatasetConfig, character: Character) -> int:
+def _write_character(config: DatasetConfig, character: Character, token: str) -> int:
     reference_paths = sorted((config.references_dir / character.slug).glob("*.png"))
     if len(reference_paths) < config.minimum_references:
         return 0
-    caption = build_caption(character, config.token_prefix)
-    token = character_token(config.token_prefix, character.slug)
+    caption = build_caption(character, token)
     written = 0
     for index, reference_path in enumerate(reference_paths):
         image = cv2.imread(str(reference_path), cv2.IMREAD_UNCHANGED)
@@ -71,20 +74,30 @@ def build_dataset(config: DatasetConfig) -> DatasetReport:
         raise ValueError(f"no character with full reference coverage in {config.characters_dir}")
     ensure_directory(config.dataset_dir)
 
+    tokens = tokens_by_slug(config.token_prefix, characters)
     images_written = 0
     written_characters = 0
     skipped = []
     for character in characters:
-        written = _write_character(config, character)
+        token = tokens[character.slug]
+        written = _write_character(config, character, token)
         if written == 0:
             skipped.append(character.slug)
             continue
         images_written += written
         written_characters += 1
-        LOGGER.info("character written: slug=%s token=%s images=%d",
-                    character.slug, character_token(config.token_prefix, character.slug), written)
+        LOGGER.info("character written: slug=%s token=%s images=%d", character.slug, token, written)
+    tokens_path = write_token_map(config.dataset_dir.parent / TOKEN_MAP_FILE_NAME, tokens)
     return DatasetReport(
             characters_written=written_characters,
             images_written=images_written,
             characters_skipped=tuple(skipped),
+            tokens_path=tokens_path,
     )
+
+
+def write_token_map(tokens_path: Path, tokens: dict[str, str]) -> Path:
+    ensure_directory(tokens_path.parent)
+    with tokens_path.open("wb") as handle:
+        tomli_w.dump({"tokens": dict(sorted(tokens.items()))}, handle)
+    return tokens_path
