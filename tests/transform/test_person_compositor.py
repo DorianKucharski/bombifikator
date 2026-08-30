@@ -135,20 +135,20 @@ class TestRenderSize(unittest.TestCase):
 
 class TestCharacterPrompt(unittest.TestCase):
 
-    def test_prompt_demands_a_plain_background(self) -> None:
-        self.assertIn("plain flat white background", build_character_prompt(_CHARACTER, _DESCRIPTION))
+    def test_prompt_starts_with_the_trained_token(self) -> None:
+        self.assertTrue(build_character_prompt(_CHARACTER, _DESCRIPTION, "bmb16").startswith("bmb16,"))
 
     def test_prompt_carries_the_pose(self) -> None:
-        self.assertIn("stoi bokiem", build_character_prompt(_CHARACTER, _DESCRIPTION))
+        self.assertIn("stoi bokiem", build_character_prompt(_CHARACTER, _DESCRIPTION, "bmb16"))
+
+    def test_prompt_carries_the_facing(self) -> None:
+        self.assertIn("w lewo", build_character_prompt(_CHARACTER, _DESCRIPTION, "bmb16"))
+
+    def test_prompt_demands_a_plain_background(self) -> None:
+        self.assertIn("plain white background", build_character_prompt(_CHARACTER, _DESCRIPTION, "bmb16"))
 
     def test_prompt_forbids_invented_props(self) -> None:
-        self.assertIn("no props", build_character_prompt(_CHARACTER, _DESCRIPTION))
-
-    def test_prompt_demands_the_reference_face_is_kept(self) -> None:
-        self.assertIn("Keep the face", build_character_prompt(_CHARACTER, _DESCRIPTION))
-
-    def test_prompt_carries_the_distinguishing_features(self) -> None:
-        self.assertIn("dlugi ogon", build_character_prompt(_CHARACTER, _DESCRIPTION))
+        self.assertIn("no props", build_character_prompt(_CHARACTER, _DESCRIPTION, "bmb16"))
 
 
 if __name__ == "__main__":

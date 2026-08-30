@@ -116,6 +116,10 @@ allow_thin_coverage = true
 model_id = "Qwen/Qwen-Image-Edit-2509"
 transformer_repo_id = "nunchaku-tech/nunchaku-qwen-image-edit-2509"
 transformer_file = "svdq-fp4_r128-qwen-image-edit-2509.safetensors"
+base_model_id = "Qwen/Qwen-Image"
+base_transformer_repo_id = "nunchaku-ai/nunchaku-qwen-image"
+base_transformer_file = "svdq-fp4_r128-qwen-image.safetensors"
+lora_path = "data/loras/identity.safetensors"
 device = "auto"
 inference_steps = 40
 true_cfg_scale = 4.0
@@ -123,9 +127,9 @@ seed = 42
 render_pixels = 1024
 erase_dilation_ratio = 0.02
 plate_feather_pixels = 25
-reference_images = 1
 
 [training]
+tokens_path = "data/training/tokens.toml"
 dataset_dir = "data/training/identity"
 token_prefix = "bmb"
 image_size = 1024

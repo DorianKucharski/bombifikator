@@ -15,14 +15,14 @@ from sharedkernel.logger import get_logger
 from sharedkernel.utils.paths import ensure_directory
 from transform.character_prompt import build_character_prompt
 from transform.background_plate import render_plate
-from transform.character_renderer import render_character
+from transform.character_renderer import paint_character
 from transform.person_compositor import paste_character, with_people_removed
 from transform.person_describer import build_system_prompt, describe_person
 from transform.person_detector import PersonDetector
 from transform.person_eraser import dilated
 from transform.person_models import CharacterAssignment, PersonInstance
-from transform.qwen_editor import QwenEditor
-from transform.reference_picker import load_references
+from transform.qwen_editor import QwenCharacterPainter, QwenEditor
+from transform.token_map import read_token_map
 from transform.transform_config import (DescriptionConfig, MatchingConfig, RenderingConfig,
                                         SegmentationConfig, TransformPaths)
 
@@ -103,6 +103,8 @@ def transform_photo(
     people_by_index = {person.person_index: person for person in people}
 
     editor = QwenEditor(rendering)
+    painter = QwenCharacterPainter(rendering, rendering.lora_path)
+    tokens = read_token_map(paths.tokens_path)
     remover = BackgroundRemover()
     replaceable = tuple(people_by_index[assignment.person_index] for assignment in assignments)
     people_mask = numpy.zeros(image.shape[:2], dtype=numpy.uint8)
@@ -112,24 +114,23 @@ def transform_photo(
             image, render_plate(editor, image, rendering.seed), people_mask, rendering.plate_feather_pixels)
     replaced = 0
     for assignment in _farthest_first(assignments, people_by_index):
-        references = load_references(paths.references_dir, assignment.slug, rendering.reference_images)
-        if not references:
-            LOGGER.warning("no reference image for character: slug=%s", assignment.slug)
+        token = tokens.get(assignment.slug)
+        if token is None:
+            LOGGER.warning("character outside the trained token map: slug=%s", assignment.slug)
             continue
         person = people_by_index[assignment.person_index]
-        rendered = render_character(
-                editor,
-                references,
+        rendered = paint_character(
+                painter,
                 build_character_prompt(characters_by_slug[assignment.slug],
-                                       described[assignment.person_index][0]),
+                                       described[assignment.person_index][0], token),
                 person.box.width,
                 person.box.height,
                 rendering.seed + assignment.person_index,
         )
         composited, _ = paste_character(composited, remover.cut_out(rendered), person.box)
         replaced += 1
-        LOGGER.info("person replaced: person=%d slug=%s box=%dx%d",
-                    assignment.person_index, assignment.slug, person.box.width, person.box.height)
+        LOGGER.info("person replaced: person=%d slug=%s token=%s box=%dx%d",
+                    assignment.person_index, assignment.slug, token, person.box.width, person.box.height)
 
     ensure_directory(output_path.parent)
     cv2.imwrite(str(output_path), composited)
