@@ -9,6 +9,7 @@ from codex.codex_config import CodexConfig, ExtractionConfig
 from harvester.harvester_config import FrameExtractionConfig, HarvesterConfig
 from reference_builder.reference_config import (ClusteringConfig, DetectionConfig, EmbeddingConfig, LabelingConfig,
                                                 ReferencePaths, SelectionConfig)
+from training.training_config import DatasetConfig
 from transform.transform_config import (DescriptionConfig, MatchingConfig, RenderingConfig,
                                         SegmentationConfig, TransformPaths)
 from sharedkernel.config_provider import ConfigProvider
@@ -29,6 +30,8 @@ references_app = typer.Typer(add_completion=False, help="Karty referencyjne post
 app.add_typer(references_app, name="references")
 transform_app = typer.Typer(add_completion=False, help="Podmiana osob na postacie")
 app.add_typer(transform_app, name="transform")
+training_app = typer.Typer(add_completion=False, help="Trening LoRA")
+app.add_typer(training_app, name="training")
 
 
 def _config_provider(config_path: Path) -> ConfigProvider:
@@ -235,6 +238,19 @@ def transform_photo_command(
                 report.people_detected, report.people_described, report.people_replaced, report.output_path)
     for assignment in report.assignments:
         LOGGER.info("assignment: person=%d slug=%s", assignment.person_index, assignment.slug)
+
+
+@training_app.command("dataset")
+def training_dataset(
+        config_path: Path = typer.Option(DEFAULT_CONFIG_PATH, "--config"),
+) -> None:
+    from training.dataset_builder import build_dataset
+
+    report = build_dataset(DatasetConfig.from_config_provider(_config_provider(config_path)))
+    LOGGER.info("dataset finished: characters=%d images=%d skipped=%d",
+                report.characters_written, report.images_written, len(report.characters_skipped))
+    if report.characters_skipped:
+        LOGGER.warning("characters without enough references: %s", ", ".join(report.characters_skipped))
 
 
 if __name__ == "__main__":

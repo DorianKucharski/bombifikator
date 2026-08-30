@@ -124,3 +124,9 @@ render_pixels = 1024
 erase_dilation_ratio = 0.02
 plate_feather_pixels = 25
 reference_images = 1
+
+[training]
+dataset_dir = "data/training/identity"
+token_prefix = "bmb"
+image_size = 1024
+minimum_references = 10
