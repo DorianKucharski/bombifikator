@@ -114,7 +114,7 @@ allow_thin_coverage = true
 
 [transform.rendering]
 model_id = "Qwen/Qwen-Image-Edit-2509"
-transformer_repo_id = "nunchaku-tech/nunchaku-qwen-image-edit-2509"
+transformer_repo_id = "nunchaku-ai/nunchaku-qwen-image-edit-2509"
 transformer_file = "svdq-fp4_r128-qwen-image-edit-2509.safetensors"
 base_model_id = "Qwen/Qwen-Image"
 base_transformer_repo_id = "nunchaku-ai/nunchaku-qwen-image"

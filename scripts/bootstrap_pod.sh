@@ -28,8 +28,11 @@ fi
 from huggingface_hub import hf_hub_download, snapshot_download
 
 print("base:", snapshot_download("Qwen/Qwen-Image-Edit-2509", ignore_patterns=["transformer/*"]))
-print("transformer:", hf_hub_download("nunchaku-tech/nunchaku-qwen-image-edit-2509",
+print("transformer:", hf_hub_download("nunchaku-ai/nunchaku-qwen-image-edit-2509",
                                       "svdq-fp4_r128-qwen-image-edit-2509.safetensors"))
+print("base:", snapshot_download("Qwen/Qwen-Image", ignore_patterns=["transformer/*"]))
+print("base transformer:", hf_hub_download("nunchaku-ai/nunchaku-qwen-image",
+                                           "svdq-fp4_r128-qwen-image.safetensors"))
 PY
 
 "${VENV}/bin/python" -c "from ultralytics import YOLO; YOLO('yolo11x-seg.pt')"

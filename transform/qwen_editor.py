@@ -27,9 +27,8 @@ def _to_bgr(image: Image.Image) -> numpy.ndarray:
     return cv2.cvtColor(numpy.asarray(image.convert("RGB")), cv2.COLOR_RGB2BGR)
 
 
-def _quantized_transformer(config: RenderingConfig, transformer_file: str) -> NunchakuQwenImageTransformer2DModel:
-    return NunchakuQwenImageTransformer2DModel.from_pretrained(
-            hf_hub_download(config.transformer_repo_id, transformer_file))
+def _quantized_transformer(repo_id: str, transformer_file: str) -> NunchakuQwenImageTransformer2DModel:
+    return NunchakuQwenImageTransformer2DModel.from_pretrained(hf_hub_download(repo_id, transformer_file))
 
 
 class QwenEditor:
@@ -38,7 +37,7 @@ class QwenEditor:
         self._device = resolve_device(config.device)
         self._pipeline = QwenImageEditPlusPipeline.from_pretrained(
                 config.model_id,
-                transformer=_quantized_transformer(config, config.transformer_file),
+                transformer=_quantized_transformer(config.transformer_repo_id, config.transformer_file),
                 torch_dtype=torch.bfloat16,
         ).to(self._device)
         self._pipeline.set_progress_bar_config(disable=True)
@@ -64,7 +63,7 @@ class QwenCharacterPainter:
     def __init__(self, config: RenderingConfig, lora_path: Path) -> None:
         self._config = config
         self._device = resolve_device(config.device)
-        transformer = _quantized_transformer(config, config.base_transformer_file)
+        transformer = _quantized_transformer(config.base_transformer_repo_id, config.base_transformer_file)
         transformer.load_lora_adapter(str(lora_path))
         self._pipeline = QwenImagePipeline.from_pretrained(
                 config.base_model_id, transformer=transformer, torch_dtype=torch.bfloat16).to(self._device)

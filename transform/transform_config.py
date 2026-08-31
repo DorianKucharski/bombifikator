@@ -7,7 +7,7 @@ from sharedkernel.config_provider import ConfigProvider
 
 _SEGMENTATION_MODEL = "yolo11x-seg.pt"
 _RENDERING_MODEL = "Qwen/Qwen-Image-Edit-2509"
-_QUANTIZED_TRANSFORMER_REPO = "nunchaku-tech/nunchaku-qwen-image-edit-2509"
+_QUANTIZED_TRANSFORMER_REPO = "nunchaku-ai/nunchaku-qwen-image-edit-2509"
 _QUANTIZED_TRANSFORMER_FILE = "svdq-fp4_r128-qwen-image-edit-2509.safetensors"
 _BASE_MODEL = "Qwen/Qwen-Image"
 _BASE_TRANSFORMER_REPO = "nunchaku-ai/nunchaku-qwen-image"
