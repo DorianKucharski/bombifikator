@@ -134,3 +134,11 @@ dataset_dir = "data/training/identity"
 token_prefix = "bmb"
 image_size = 1024
 minimum_references = 10
+previews_dir = "data/training/previews"
+
+[training.preview]
+samples_per_token = 4
+sheet_grid_size = 2
+sheet_tile_pixels = 512
+preview_pixels = 1024
+seed = 42

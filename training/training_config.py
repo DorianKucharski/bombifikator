@@ -27,3 +27,26 @@ class DatasetConfig:
                 image_size=config_provider.get_int("training.image_size", 1024),
                 minimum_references=config_provider.get_int("training.minimum_references", 10),
         )
+
+
+@dataclass(frozen=True)
+class PreviewConfig:
+    tokens_path: Path
+    previews_dir: Path
+    samples_per_token: int
+    sheet_grid_size: int
+    sheet_tile_pixels: int
+    preview_pixels: int
+    seed: int
+
+    @classmethod
+    def from_config_provider(cls, config_provider: ConfigProvider) -> "PreviewConfig":
+        return cls(
+                tokens_path=config_provider.get_path("training.tokens_path", "data/training/tokens.toml"),
+                previews_dir=config_provider.get_path("training.previews_dir", "data/training/previews"),
+                samples_per_token=config_provider.get_int("training.preview.samples_per_token", 4),
+                sheet_grid_size=config_provider.get_int("training.preview.sheet_grid_size", 2),
+                sheet_tile_pixels=config_provider.get_int("training.preview.sheet_tile_pixels", 512),
+                preview_pixels=config_provider.get_int("training.preview.preview_pixels", 1024),
+                seed=config_provider.get_int("training.preview.seed", 42),
+        )

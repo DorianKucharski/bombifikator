@@ -9,7 +9,7 @@ from codex.codex_config import CodexConfig, ExtractionConfig
 from harvester.harvester_config import FrameExtractionConfig, HarvesterConfig
 from reference_builder.reference_config import (ClusteringConfig, DetectionConfig, EmbeddingConfig, LabelingConfig,
                                                 ReferencePaths, SelectionConfig)
-from training.training_config import DatasetConfig
+from training.training_config import DatasetConfig, PreviewConfig
 from transform.transform_config import (DescriptionConfig, MatchingConfig, RenderingConfig,
                                         SegmentationConfig, TransformPaths)
 from sharedkernel.config_provider import ConfigProvider
@@ -251,6 +251,20 @@ def training_dataset(
                 report.characters_written, report.images_written, len(report.characters_skipped))
     if report.characters_skipped:
         LOGGER.warning("characters without enough references: %s", ", ".join(report.characters_skipped))
+
+
+@training_app.command("preview")
+def training_preview(
+        lora: Path = typer.Option(..., "--lora"),
+        config_path: Path = typer.Option(DEFAULT_CONFIG_PATH, "--config"),
+) -> None:
+    from training.preview_renderer import write_token_previews
+    from transform.qwen_editor import QwenCharacterPainter
+
+    config_provider = _config_provider(config_path)
+    painter = QwenCharacterPainter(RenderingConfig.from_config_provider(config_provider), lora)
+    written = write_token_previews(painter, PreviewConfig.from_config_provider(config_provider))
+    LOGGER.info("previews finished: characters=%d", written)
 
 
 if __name__ == "__main__":
