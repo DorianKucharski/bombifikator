@@ -4,7 +4,7 @@ config:
   name: "bombifikator_identity_lora_v2"
   process:
     - type: 'sd_trainer'
-      training_folder: "/workspace/training/output"
+      training_folder: "/root/training/output"
       device: cuda:0
       network:
         type: "lora"
@@ -13,7 +13,7 @@ config:
       save:
         dtype: float16
         save_every: 500
-        max_step_saves_to_keep: 4
+        max_step_saves_to_keep: 2
       datasets:
         - folder_path: "/workspace/training/identity"
           caption_ext: "txt"
