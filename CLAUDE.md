@@ -16,7 +16,35 @@ Plan całości: `/home/dorian/.claude/plans/mutable-strolling-otter.md` (zatwier
 - Materiału źródłowego nie ma lokalnie, wszystko trzeba pozyskać z sieci.
 - Kwestia prawna spisana w `LICENSE`: kod MIT, dane i wagi nie są dystrybuowane, użytek prywatny.
 
-## Stan na 2026-08-30
+## Stan na 2026-08-31
+
+Etap 4, LoRA tożsamości v2 wytrenowana do końca: rank 128, alpha 128, 6000 kroków, ok. 7 godzin
+na RTX PRO 6000. Plik lokalnie w `data/loras/identity_v2.safetensors`. Nie jest jeszcze oceniona
+end to end, bo po drodze wyszły dwa problemy.
+
+Problem pierwszy, blokujący inferencję. Nunchaku nie umie wczytać LoRA do Qwen-Image. Konwertery
+LoRA w Nunchaku istnieją wyłącznie dla FLUX, także na gałęzi głównej. PEFT nie wstrzyknie adaptera
+w skwantyzowane warstwy (`ValueError: Target module AWQW4A16Linear ... is not supported`).
+Do tego klucze z `ai-toolkit` mają prefiks `diffusion_model`, nie `transformer`, więc
+`load_lora_adapter` bez `prefix=` cicho nic nie robi i renderuje czysty model bazowy.
+Wniosek: malowanie postaci z LoRA wymaga transformera bf16 (40,9 GB z `Qwen/Qwen-Image`),
+a ten nie mieści się na podzie z dyskiem kontenera 30 GB i wolumenem 50 GB.
+Plik `qwen_image_fp8mixed.safetensors`, na którym uczył `ai-toolkit`, nie jest zamiennikiem:
+diffusers odrzuca przy wczytywaniu tensory `weight_scale` i render wychodzi czystym szumem.
+Kolejny pod pod inferencję z LoRA musi mieć dysk kontenera co najmniej 120 GB.
+
+Problem drugi, ważniejszy. Karty referencyjne z etapu 2 mieszają tożsamości. `tytus-bomba`
+dostał 23 klastry i jego 16 referencji to co najmniej trzy różne postacie: blondyn w podkoszulku,
+żołnierze w hełmach i sylwetka mecha. `kurvinox` dostał 82 klastry z 293 nazwanych, czyli 28 procent
+wszystkiego. Pewność etykietera nie odsiewa błędów, mediana dla przepełnionych postaci to 0,72
+przy progu 0,6. Widać to wprost w próbkach treningowych: tokeny z czystymi zestawami
+(`bmb16`, `bmb21`, `bmb26`) poprawiają się do końca, a `bmb30` czyli `tytus-bomba` rozpada się
+po kroku 3500 w bezkształtną plamę, bo uczy się średniej z trzech tożsamości.
+Poprawki wprowadzone: `rows_near_medoid` odsiewa kadry odstające od mediany odległości do medoidu
+(mediana plus tolerancja razy MAD) zanim zadziała dobór różnorodności, a `background_removed`
+odrzuca kadry, na których `rembg` zawiódł i zostało nieprzezroczyste tło.
+Kolejność ma znaczenie: `select_diverse_rows` celowo bierze kadry najbardziej odległe,
+więc bez filtra czystości wręcz preferował intruzów.
 
 Etapy 0, 1, 2 i 3 zrobione i uruchomione. Punkt decyzyjny etapu 3 przeszedł na 7 zdjęciach:
 wyniki poniżej progu, więc etap 4 (LoRA) jest otwarty.
@@ -159,9 +187,14 @@ Git: repozytorium zainicjowane, ZERO commitów. Nic nie commitowałem, bo użytk
 
 ## Kolejne kroki, w tej kolejności
 
-1. Etap 3 `transform/`: YOLO11-seg → opis osób Claude'em → matcher → inpainting Qwen-Image-Edit per osoba.
-   Punkt decyzyjny: 30 zdjęć testowych, ocena 1-5 na trzech osiach. Poniżej 3.5 otwiera etap 4.
-2. Etap 4 `training/`: LoRA stylu, potem LoRA tożsamości postaci, `ai-toolkit` na RunPodzie. Tylko jeśli etap 3 nie dowozi.
+1. Odbudowa kart referencyjnych. `data/frames` i `data/episodes` są lokalnie, ale kadry i embeddingi
+   przepadły razem z podem, więc `references detect` i `references embed` trzeba puścić od nowa na GPU.
+   Potem `cluster`, `label` lokalnie, `build` już z filtrem czystości.
+2. Weryfikacja czystości: arkusz kontaktowy na postać z nowych kart, ręczny przegląd najgorszych.
+   Bez tego nie ma sensu trenować kolejnej LoRA.
+3. `training dataset` i trening v3 na naprawionych danych.
+4. Ocena: pod z dyskiem kontenera co najmniej 120 GB, transformer bf16, `training preview --lora`
+   na wszystkich tokenach, potem `transform photo` end to end.
 
 ## Konwencje w tym repo
 
