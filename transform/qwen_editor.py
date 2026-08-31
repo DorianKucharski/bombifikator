@@ -18,6 +18,8 @@ from transform.transform_config import RenderingConfig
 
 LOGGER = get_logger("transform.qwen_editor")
 
+_AI_TOOLKIT_LORA_PREFIX = "diffusion_model"
+
 
 def _to_pil(image: numpy.ndarray) -> Image.Image:
     return Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
@@ -64,7 +66,7 @@ class QwenCharacterPainter:
         self._config = config
         self._device = resolve_device(config.device)
         transformer = _quantized_transformer(config.base_transformer_repo_id, config.base_transformer_file)
-        transformer.load_lora_adapter(str(lora_path))
+        transformer.load_lora_adapter(str(lora_path), prefix=_AI_TOOLKIT_LORA_PREFIX)
         self._pipeline = QwenImagePipeline.from_pretrained(
                 config.base_model_id, transformer=transformer, torch_dtype=torch.bfloat16).to(self._device)
         self._pipeline.set_progress_bar_config(disable=True)

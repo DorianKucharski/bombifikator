@@ -10,6 +10,7 @@ import numpy
 from codex.character_models import Character, ReferenceCoverage
 from codex.character_store import CharacterStore
 from reference_builder.background_remover import BackgroundRemover
+from reference_builder.cutout_quality import background_removed
 from reference_builder.cluster_store import read_clusters
 from reference_builder.coverage_marker import coverage_of, mark_coverage
 from reference_builder.crop_store import CropStore
@@ -17,7 +18,7 @@ from reference_builder.embedding_store import load_embeddings
 from reference_builder.label_store import read_labels
 from reference_builder.reference_config import ReferencePaths, SelectionConfig
 from reference_builder.reference_models import CharacterCluster, ClusterLabel, CropRecord, ReferenceCard
-from reference_builder.reference_selector import medoid_row, select_diverse_rows
+from reference_builder.reference_selector import medoid_row, rows_near_medoid, select_diverse_rows
 from reference_builder.reference_store import ReferenceStore
 from sharedkernel.logger import get_logger
 
@@ -58,25 +59,34 @@ def _cards_by_slug(clusters: tuple[CharacterCluster, ...], labels: tuple[Cluster
 
 
 def _selected_crop_ids(card: ReferenceCard, crop_id_rows: dict[str, int], embeddings: numpy.ndarray,
-                       target_references: int) -> tuple[str, ...]:
+                       config: SelectionConfig) -> tuple[str, ...]:
     known = tuple(crop_id for crop_id in card.crop_ids if crop_id in crop_id_rows)
     if not known:
         return ()
     rows = numpy.array([crop_id_rows[crop_id] for crop_id in known])
-    cluster_embeddings = embeddings[rows]
-    selected = select_diverse_rows(cluster_embeddings, target_references, medoid_row(cluster_embeddings))
-    return tuple(known[row] for row in selected)
+    core_rows = rows_near_medoid(embeddings[rows], config.identity_deviation_tolerance)
+    core_ids = tuple(known[row] for row in core_rows)
+    core_embeddings = embeddings[rows[list(core_rows)]]
+    selected = select_diverse_rows(core_embeddings, config.target_references, medoid_row(core_embeddings))
+    return tuple(core_ids[row] for row in selected)
 
 
-def _reference_images(crop_store: CropStore, crop_ids: tuple[str, ...],
-                      remover: BackgroundRemover | None) -> tuple[tuple[numpy.ndarray, ...], tuple[str, ...]]:
+def _reference_images(crop_store: CropStore, crop_ids: tuple[str, ...], remover: BackgroundRemover | None,
+                      max_opaque_ratio: float) -> tuple[tuple[numpy.ndarray, ...], tuple[str, ...]]:
     images = []
     readable_ids = []
     for crop_id in crop_ids:
         image = cv2.imread(str(crop_store.crop_path(crop_id)))
         if image is None:
             continue
-        images.append(remover.cut_out(image) if remover is not None else image)
+        if remover is None:
+            images.append(image)
+            readable_ids.append(crop_id)
+            continue
+        cut = remover.cut_out(image)
+        if not background_removed(cut, max_opaque_ratio):
+            continue
+        images.append(cut)
         readable_ids.append(crop_id)
     return tuple(images), tuple(readable_ids)
 
@@ -104,8 +114,8 @@ def build_references(paths: ReferencePaths, characters_dir: Path, config: Select
     coverage_counts: dict[ReferenceCoverage, int] = defaultdict(int)
     for slug in sorted(cards):
         card = cards[slug]
-        selected = _selected_crop_ids(card, crop_id_rows, embeddings, config.target_references)
-        images, readable_ids = _reference_images(crop_store, selected, remover)
+        selected = _selected_crop_ids(card, crop_id_rows, embeddings, config)
+        images, readable_ids = _reference_images(crop_store, selected, remover, config.max_opaque_ratio)
         coverage = coverage_of(len(images), config.target_references, config.thin_reference_threshold)
         coverage_counts[coverage] += 1
         if not images:

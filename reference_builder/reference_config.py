@@ -130,6 +130,8 @@ class SelectionConfig:
     thin_reference_threshold: int
     min_label_confidence: float
     remove_background: bool
+    identity_deviation_tolerance: float
+    max_opaque_ratio: float
 
     @classmethod
     def from_config_provider(cls, config_provider: ConfigProvider) -> "SelectionConfig":
@@ -140,4 +142,7 @@ class SelectionConfig:
                 min_label_confidence=config_provider.get_float(
                         "reference_builder.selection.min_label_confidence", 0.6),
                 remove_background=config_provider.get_bool("reference_builder.selection.remove_background", True),
+                identity_deviation_tolerance=config_provider.get_float(
+                        "reference_builder.selection.identity_deviation_tolerance", 2.0),
+                max_opaque_ratio=config_provider.get_float("reference_builder.selection.max_opaque_ratio", 0.9),
         )
