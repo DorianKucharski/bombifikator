@@ -33,18 +33,26 @@ Plik `qwen_image_fp8mixed.safetensors`, na którym uczył `ai-toolkit`, nie jest
 diffusers odrzuca przy wczytywaniu tensory `weight_scale` i render wychodzi czystym szumem.
 Kolejny pod pod inferencję z LoRA musi mieć dysk kontenera co najmniej 120 GB.
 
-Problem drugi, ważniejszy. Karty referencyjne z etapu 2 mieszają tożsamości. `tytus-bomba`
-dostał 23 klastry i jego 16 referencji to co najmniej trzy różne postacie: blondyn w podkoszulku,
-żołnierze w hełmach i sylwetka mecha. `kurvinox` dostał 82 klastry z 293 nazwanych, czyli 28 procent
-wszystkiego. Pewność etykietera nie odsiewa błędów, mediana dla przepełnionych postaci to 0,72
-przy progu 0,6. Widać to wprost w próbkach treningowych: tokeny z czystymi zestawami
-(`bmb16`, `bmb21`, `bmb26`) poprawiają się do końca, a `bmb30` czyli `tytus-bomba` rozpada się
-po kroku 3500 w bezkształtną plamę, bo uczy się średniej z trzech tożsamości.
-Poprawki wprowadzone: `rows_near_medoid` odsiewa kadry odstające od mediany odległości do medoidu
+Problem drugi, ważniejszy: za mało referencji na postać. `target_references` było 16, a Kapitan Bomba
+ma 385 dostępnych kadrów, czyli 369 szło do kosza. Przy 16 referencjach rozłożonych na dwa różne
+looki tej samej postaci (hełm w stylu Robocopa i mundur kontra podkoszulek w domu) na każdy wygląd
+zostaje po osiem kadrów, za mało, żeby token złapał którykolwiek. Stąd rozpad `bmb30` po kroku 3500
+w bezkształtną plamę, podczas gdy tokeny postaci o jednolitym wyglądzie (`bmb16`, `bmb21`, `bmb26`)
+poprawiały się do końca. `target_references` podniesione do 64, co daje dataset 1597 obrazów zamiast
+525 i 18 z 33 postaci na pełnym targecie.
+
+Uwaga na slugi, żeby nie powtórzyć mojej pomyłki: `tytus-bomba` to Kapitan Bomba. Slug bierze się
+z tytułu strony wiki, a `canonical_name` to "Kapitan Tytus Bomba". Etykieter przypisywał ten slug
+poprawnie, jego 23 klastry to jedna postać w różnych strojach, nie kilka postaci.
+Podobnie `kurvinox` z 82 klastrami: `species = "kurvinox"` i alias "kurvinoxy" znaczą, że to cała rasa,
+a nie pojedynczy osobnik, więc token dla niej z definicji uśrednia różnych przedstawicieli.
+To samo dotyczy `naukowcy` i `c-qrwozaurscy-kardynalowie`.
+
+Poprawki dodatkowe: `rows_near_medoid` odsiewa kadry odstające od mediany odległości do medoidu
 (mediana plus tolerancja razy MAD) zanim zadziała dobór różnorodności, a `background_removed`
-odrzuca kadry, na których `rembg` zawiódł i zostało nieprzezroczyste tło.
+odrzuca kadry, na których `rembg` zawiódł i zostało nieprzezroczyste tło (widziałem kanapę, pustynię).
 Kolejność ma znaczenie: `select_diverse_rows` celowo bierze kadry najbardziej odległe,
-więc bez filtra czystości wręcz preferował intruzów.
+więc bez filtra czystości preferował kadry najmniej reprezentatywne.
 
 Etapy 0, 1, 2 i 3 zrobione i uruchomione. Punkt decyzyjny etapu 3 przeszedł na 7 zdjęciach:
 wyniki poniżej progu, więc etap 4 (LoRA) jest otwarty.
