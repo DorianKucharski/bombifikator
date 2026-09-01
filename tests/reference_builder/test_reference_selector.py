@@ -29,6 +29,11 @@ class TestReferenceSelector(unittest.TestCase):
         selected = select_diverse_rows(embeddings, 12, seed_row=3)
         self.assertEqual(len(selected), len(set(selected)))
 
+    def test_medoid_matches_the_naive_pairwise_computation(self) -> None:
+        embeddings = numpy.random.default_rng(11).normal(size=(40, 16))
+        naive = numpy.linalg.norm(embeddings[:, None, :] - embeddings[None, :, :], axis=2).sum(axis=1)
+        self.assertEqual(int(numpy.argmin(naive)), medoid_row(embeddings))
+
 
 if __name__ == "__main__":
     unittest.main()

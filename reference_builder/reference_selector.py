@@ -4,7 +4,9 @@ import numpy
 
 
 def _pairwise_distances(embeddings: numpy.ndarray) -> numpy.ndarray:
-    return numpy.linalg.norm(embeddings[:, None, :] - embeddings[None, :, :], axis=2)
+    squared_norms = numpy.einsum("ij,ij->i", embeddings, embeddings)
+    squared_distances = squared_norms[:, None] + squared_norms[None, :] - 2.0 * (embeddings @ embeddings.T)
+    return numpy.sqrt(numpy.maximum(squared_distances, 0.0))
 
 
 def medoid_row(embeddings: numpy.ndarray) -> int:
