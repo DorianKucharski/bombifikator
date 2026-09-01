@@ -16,6 +16,55 @@ Plan całości: `/home/dorian/.claude/plans/mutable-strolling-otter.md` (zatwier
 - Materiału źródłowego nie ma lokalnie, wszystko trzeba pozyskać z sieci.
 - Kwestia prawna spisana w `LICENSE`: kod MIT, dane i wagi nie są dystrybuowane, użytek prywatny.
 
+## Stan na 2026-09-01, tu wracamy
+
+Etap 2 przebudowany od zera i trwa trening LoRA tożsamości v3. Pod: `216.243.220.130`, port `10427`,
+alias `runpod` w `~/.ssh/config` (klucz `~/.ssh/dorian`). Port zmienia się po każdym restarcie poda.
+
+**Co robić po powrocie.** Sprawdź, czy trening żyje i na którym kroku jest:
+`ssh runpod 'tail -c 250 /workspace/logs/identity_v3.log | tr "\r" "\n" | tail -1; df -h /root | tail -1'`.
+Jeśli skończył, checkpointy leżą w `/root/training/output/bombifikator_identity_lora_v3/`
+(trzymane są cztery ostatnie) i trzeba je NATYCHMIAST ściągnąć na dół, bo `/root` ginie razem z podem.
+Próbki ściągam do `data/training/samples_v3/`, po kroku i tokenie z nazwy pliku.
+
+**Trening v3**, konfiguracja w `training/configs/identity_lora.yaml`:
+1465 obrazów, 32 postacie, rank 128, alpha 128, 10000 kroków (7 epok), sample co 500.
+Wystartował, padł na kroku 1500 na `No space left on device` przy zapisie checkpointu, wznowiony
+od 1000 po zwolnieniu miejsca. Ostatnia widziana ocena: krok 1500, czyli pełna epoka. Poza działa
+poprawnie, styl się buduje, tożsamość jeszcze nie (Kapitan Bomba wychodzi jako umięśniony typ
+w opasce zamiast blondyna z wielką szczęką). W v2 tożsamość układała się po trzech do pięciu epok,
+więc tutaj odpowiednik wypada koło kroku 4500-7500. Kolejna kontrola miała być na 4500.
+
+**Mapa tokenów jest inna niż w v2.** Obowiązuje ta z poda, skopiowana do `data/training/tokens.toml`:
+`bmb31` to `tytus-bomba` czyli Kapitan Bomba, `bmb08` to `chorazy-torpeda`, `bmb18` to `kurvinox`,
+`bmb20` to `kutnapletes`. Prompty próbek w configu celują w `bmb31` (dwa razy), `bmb08` i `bmb20`.
+Rozjazd wziął się stąd, że lokalny kodeks miał stare oznaczenia pokrycia i `training dataset`
+wybrał lokalnie inny zestaw postaci niż na podzie. Zawsze bierz `tokens.toml` z tego przebiegu,
+który faktycznie trenował.
+
+**Wyniki przebudowy etapu 2:** 28676 kadrów z 16071 klatek, 509 klastrów, 13200 kadrów w klastrach,
+223 klastry nazwane, 35 postaci, 1499 referencji, z tego 32 postacie z pokryciem `FULL`.
+Kapitan Bomba ma 60 referencji zamiast 16 i jego zestaw jest jednolity tożsamościowo.
+
+**Cztery błędy naprawione po drodze**, wszystkie zacommitowane:
+- `medoid_row` materializował tablicę N×N×768, czyli 5,8 GB dla jednej postaci. Teraz przez macierz
+  Grama, 0,2 s zamiast minut.
+- `rembg[gpu]` ciągnie `onnxruntime-gpu` zbudowany pod CUDA 13, a pod ma 12.8, więc leciało po CPU,
+  21 s na kadr zamiast 0,27 s. Wersja przypięta na `onnxruntime-gpu==1.22.0`.
+- `coverage_of` porównywał liczbę referencji z `target_references`, więc podniesienie targetu na 64
+  zepchnęło prawie wszystkie postacie na `THIN` i `training dataset` brał tylko dwie. Próg pełnego
+  pokrycia jest teraz osobny (`full_reference_threshold`, 16).
+- `QwenCharacterPainter` ładował transformer bazowy z Nunchaku, który LoRA nie przyjmie. Teraz bierze
+  bf16 wprost z `Qwen/Qwen-Image` z `enable_model_cpu_offload`.
+
+**Co zostaje nierozwiązane:** na ok. jednej czwartej kart tło nie jest usunięte (kanapa, pustynia,
+ciemne sceny). `background_removed` łapie tylko całkowitą porażkę `rembg`, a tu model wycina blob
+razem z tłem, więc alfa nie jest w pełni nieprzezroczysta. Do poprawy przed ewentualnym v4.
+
+**Ocena LoRA wymaga poda z dyskiem kontenera co najmniej 120 GB**, bo transformer bf16 waży 40,9 GB.
+Komenda jest gotowa: `training preview --lora <plik>` renderuje po cztery próbki na każdy z 32 tokenów
+i składa arkusz na postać. Potem `transform photo` end to end.
+
 ## Stan na 2026-08-31
 
 Etap 4, LoRA tożsamości v2 wytrenowana do końca: rank 128, alpha 128, 6000 kroków, ok. 7 godzin
@@ -195,14 +244,12 @@ Git: repozytorium zainicjowane, ZERO commitów. Nic nie commitowałem, bo użytk
 
 ## Kolejne kroki, w tej kolejności
 
-1. Odbudowa kart referencyjnych. `data/frames` i `data/episodes` są lokalnie, ale kadry i embeddingi
-   przepadły razem z podem, więc `references detect` i `references embed` trzeba puścić od nowa na GPU.
-   Potem `cluster`, `label` lokalnie, `build` już z filtrem czystości.
-2. Weryfikacja czystości: arkusz kontaktowy na postać z nowych kart, ręczny przegląd najgorszych.
-   Bez tego nie ma sensu trenować kolejnej LoRA.
-3. `training dataset` i trening v3 na naprawionych danych.
-4. Ocena: pod z dyskiem kontenera co najmniej 120 GB, transformer bf16, `training preview --lora`
-   na wszystkich tokenach, potem `transform photo` end to end.
+1. Dokończyć trening v3 i ocenić próbki na kroku 4500, potem na 7500 i na końcu.
+   Wybrać najlepszy checkpoint, nie automatycznie ostatni: w v2 różne tokeny miały różne optimum.
+2. Ściągnąć wybrany checkpoint do `data/loras/` i podłożyć jako `identity.safetensors`.
+3. Ocena na podzie z dyskiem co najmniej 120 GB: `training preview --lora`, potem `transform photo`
+   na zdjęciach z `data/input`.
+4. Jeśli wyniki są słabe, przed v4 poprawić wykrywanie nieusuniętego tła w kartach referencyjnych.
 
 ## Konwencje w tym repo
 
