@@ -16,7 +16,7 @@ fi
 "${VENV}/bin/pip" install --quiet --upgrade pip
 "${VENV}/bin/pip" install --quiet \
     "diffusers==0.36.0" transformers accelerate huggingface_hub safetensors \
-    ultralytics opencv-python-headless "rembg[gpu]" \
+    ultralytics opencv-python-headless rembg "onnxruntime-gpu==1.22.0" \
     scikit-learn timm tomli-w typer anthropic
 
 if ! "${VENV}/bin/python" -c "import nunchaku" 2>/dev/null; then
