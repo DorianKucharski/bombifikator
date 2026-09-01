@@ -127,6 +127,7 @@ class LabelingConfig:
 @dataclass(frozen=True)
 class SelectionConfig:
     target_references: int
+    full_reference_threshold: int
     thin_reference_threshold: int
     min_label_confidence: float
     remove_background: bool
@@ -137,6 +138,8 @@ class SelectionConfig:
     def from_config_provider(cls, config_provider: ConfigProvider) -> "SelectionConfig":
         return cls(
                 target_references=config_provider.get_int("reference_builder.selection.target_references", 16),
+                full_reference_threshold=config_provider.get_int(
+                        "reference_builder.selection.full_reference_threshold", 16),
                 thin_reference_threshold=config_provider.get_int(
                         "reference_builder.selection.thin_reference_threshold", 10),
                 min_label_confidence=config_provider.get_float(

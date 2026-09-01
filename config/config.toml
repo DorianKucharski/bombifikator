@@ -90,6 +90,7 @@ prominences = ["MAIN", "RECURRING"]
 
 [reference_builder.selection]
 target_references = 64
+full_reference_threshold = 16
 thin_reference_threshold = 10
 min_label_confidence = 0.6
 remove_background = true

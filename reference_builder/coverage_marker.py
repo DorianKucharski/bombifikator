@@ -6,8 +6,8 @@ from codex.character_models import Character, ReferenceCoverage
 from codex.character_store import CharacterStore
 
 
-def coverage_of(reference_count: int, target_references: int, thin_threshold: int) -> ReferenceCoverage:
-    if reference_count >= target_references:
+def coverage_of(reference_count: int, full_threshold: int, thin_threshold: int) -> ReferenceCoverage:
+    if reference_count >= full_threshold:
         return ReferenceCoverage.FULL
     if reference_count >= thin_threshold:
         return ReferenceCoverage.THIN

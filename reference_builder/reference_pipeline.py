@@ -116,7 +116,7 @@ def build_references(paths: ReferencePaths, characters_dir: Path, config: Select
         card = cards[slug]
         selected = _selected_crop_ids(card, crop_id_rows, embeddings, config)
         images, readable_ids = _reference_images(crop_store, selected, remover, config.max_opaque_ratio)
-        coverage = coverage_of(len(images), config.target_references, config.thin_reference_threshold)
+        coverage = coverage_of(len(images), config.full_reference_threshold, config.thin_reference_threshold)
         coverage_counts[coverage] += 1
         if not images:
             LOGGER.warning("no readable crops for character: slug=%s", slug)

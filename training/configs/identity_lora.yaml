@@ -1,7 +1,7 @@
 ---
 job: extension
 config:
-  name: "bombifikator_identity_lora_v2"
+  name: "bombifikator_identity_lora_v3"
   process:
     - type: 'sd_trainer'
       training_folder: "/root/training/output"
@@ -24,7 +24,7 @@ config:
       train:
         batch_size: 1
         cache_text_embeddings: true
-        steps: 6000
+        steps: 10000
         gradient_accumulation: 1
         train_unet: true
         train_text_encoder: false
