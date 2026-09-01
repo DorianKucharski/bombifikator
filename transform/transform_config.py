@@ -10,8 +10,6 @@ _RENDERING_MODEL = "Qwen/Qwen-Image-Edit-2509"
 _QUANTIZED_TRANSFORMER_REPO = "nunchaku-ai/nunchaku-qwen-image-edit-2509"
 _QUANTIZED_TRANSFORMER_FILE = "svdq-fp4_r128-qwen-image-edit-2509.safetensors"
 _BASE_MODEL = "Qwen/Qwen-Image"
-_BASE_TRANSFORMER_REPO = "nunchaku-ai/nunchaku-qwen-image"
-_BASE_TRANSFORMER_FILE = "svdq-fp4_r128-qwen-image.safetensors"
 
 
 @dataclass(frozen=True)
@@ -84,8 +82,6 @@ class RenderingConfig:
     transformer_repo_id: str
     transformer_file: str
     base_model_id: str
-    base_transformer_repo_id: str
-    base_transformer_file: str
     lora_path: Path
     device: str
     inference_steps: int
@@ -104,10 +100,6 @@ class RenderingConfig:
                 transformer_file=config_provider.get_str(
                         "transform.rendering.transformer_file", _QUANTIZED_TRANSFORMER_FILE),
                 base_model_id=config_provider.get_str("transform.rendering.base_model_id", _BASE_MODEL),
-                base_transformer_repo_id=config_provider.get_str(
-                        "transform.rendering.base_transformer_repo_id", _BASE_TRANSFORMER_REPO),
-                base_transformer_file=config_provider.get_str(
-                        "transform.rendering.base_transformer_file", _BASE_TRANSFORMER_FILE),
                 lora_path=config_provider.get_path("transform.rendering.lora_path", "data/loras/identity.safetensors"),
                 device=config_provider.get_str("transform.rendering.device", "auto"),
                 inference_steps=config_provider.get_int("transform.rendering.inference_steps", 40),

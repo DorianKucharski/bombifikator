@@ -6,7 +6,7 @@ from typing import Sequence
 import cv2
 import numpy
 import torch
-from diffusers import QwenImageEditPlusPipeline, QwenImagePipeline
+from diffusers import QwenImageEditPlusPipeline, QwenImagePipeline, QwenImageTransformer2DModel
 from huggingface_hub import hf_hub_download
 from nunchaku import NunchakuQwenImageTransformer2DModel
 from PIL import Image
@@ -65,10 +65,12 @@ class QwenCharacterPainter:
     def __init__(self, config: RenderingConfig, lora_path: Path) -> None:
         self._config = config
         self._device = resolve_device(config.device)
-        transformer = _quantized_transformer(config.base_transformer_repo_id, config.base_transformer_file)
+        transformer = QwenImageTransformer2DModel.from_pretrained(
+                config.base_model_id, subfolder="transformer", torch_dtype=torch.bfloat16)
         transformer.load_lora_adapter(str(lora_path), prefix=_AI_TOOLKIT_LORA_PREFIX)
         self._pipeline = QwenImagePipeline.from_pretrained(
-                config.base_model_id, transformer=transformer, torch_dtype=torch.bfloat16).to(self._device)
+                config.base_model_id, transformer=transformer, torch_dtype=torch.bfloat16)
+        self._pipeline.enable_model_cpu_offload(device=self._device)
         self._pipeline.set_progress_bar_config(disable=True)
         LOGGER.info("painter loaded: model=%s lora=%s device=%s", config.base_model_id, lora_path, self._device)
 
