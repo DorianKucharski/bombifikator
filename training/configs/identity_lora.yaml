@@ -48,10 +48,10 @@ config:
         width: 1024
         height: 1024
         prompts:
-          - "bmb30, flat cel shaded cartoon character with heavy black outlines on a plain white background"
-          - "bmb16, flat cel shaded cartoon character with heavy black outlines on a plain white background"
-          - "bmb26, standing with both arms raised, flat cel shaded cartoon character with heavy black outlines on a plain white background"
-          - "bmb21, sitting with hands on knees, flat cel shaded cartoon character with heavy black outlines on a plain white background"
+          - "bmb31, flat cel shaded cartoon character with heavy black outlines on a plain white background"
+          - "bmb08, flat cel shaded cartoon character with heavy black outlines on a plain white background"
+          - "bmb31, standing with both arms raised, flat cel shaded cartoon character with heavy black outlines on a plain white background"
+          - "bmb20, sitting with hands on knees, flat cel shaded cartoon character with heavy black outlines on a plain white background"
         neg: "photograph, photorealistic skin, blurry, scenery"
         seed: 42
         walk_seed: true
