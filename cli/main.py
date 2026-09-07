@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import typer
@@ -251,6 +252,20 @@ def training_dataset(
                 report.characters_written, report.images_written, len(report.characters_skipped))
     if report.characters_skipped:
         LOGGER.warning("characters without enough references: %s", ", ".join(report.characters_skipped))
+
+
+@training_app.command("single-dataset")
+def training_single_dataset(
+        slug: str = typer.Option(..., "--slug"),
+        dataset_dir: Path = typer.Option(..., "--out"),
+        config_path: Path = typer.Option(DEFAULT_CONFIG_PATH, "--config"),
+) -> None:
+    from training.dataset_builder import build_single_character_dataset
+
+    config = replace(DatasetConfig.from_config_provider(_config_provider(config_path)), dataset_dir=dataset_dir)
+    report = build_single_character_dataset(config, slug)
+    LOGGER.info("single dataset finished: slug=%s images=%d tokens=%s", slug, report.images_written,
+                report.tokens_path)
 
 
 @training_app.command("preview")

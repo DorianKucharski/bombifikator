@@ -8,9 +8,12 @@ import cv2
 import numpy
 
 from codex.character_models import (AgeGroup, AppearanceTraits, Build, Character, Prominence, ReferenceCoverage, Sex)
-from training.caption_builder import build_caption, character_token, tokens_by_slug
-from training.dataset_builder import (build_dataset, flattened_on_white, squared_on_white, trainable_characters)
+from training.caption_builder import build_caption, tokens_by_slug
+from training.dataset_builder import (build_dataset, build_single_character_dataset, flattened_on_white,
+                                      squared_on_white, trainable_characters)
 from training.training_config import DatasetConfig
+
+_VOCABULARY = ("zqylan", "murgash")
 
 
 def _character(slug: str, coverage: ReferenceCoverage = ReferenceCoverage.FULL) -> Character:
@@ -29,29 +32,25 @@ def _character(slug: str, coverage: ReferenceCoverage = ReferenceCoverage.FULL) 
 
 class TestCaptionBuilder(unittest.TestCase):
 
-    def test_token_is_a_short_numbered_code(self) -> None:
-        self.assertEqual("bmb07", character_token("bmb", 7))
-
     def test_tokens_are_assigned_by_slug_order(self) -> None:
-        tokens = tokens_by_slug("bmb", (_character("zzz"), _character("aaa")))
-        self.assertEqual({"aaa": "bmb01", "zzz": "bmb02"}, tokens)
+        tokens = tokens_by_slug(_VOCABULARY, (_character("zzz"), _character("aaa")))
+        self.assertEqual({"aaa": "zqylan", "zzz": "murgash"}, tokens)
 
-    def test_no_two_characters_share_a_token(self) -> None:
-        tokens = tokens_by_slug("bmb", tuple(_character(f"postac-{index}") for index in range(32)))
-        self.assertEqual(32, len(set(tokens.values())))
+    def test_vocabulary_shorter_than_the_cast_is_rejected(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            tokens_by_slug(("zqylan",), (_character("aaa"), _character("zzz")))
+        self.assertIn("2 characters", str(raised.exception))
 
     def test_caption_starts_with_the_token(self) -> None:
-        self.assertTrue(build_caption(_character("kurvinox"), "bmb01").startswith("bmb01,"))
+        self.assertTrue(build_caption("zqylan").startswith("zqylan,"))
 
-    def test_caption_carries_the_species_and_the_style(self) -> None:
-        caption = build_caption(_character("kurvinox"), "bmb01")
-        self.assertIn("kurvinox", caption)
-        self.assertIn("flat cel shaded", caption)
+    def test_caption_carries_the_style_the_lora_is_trained_on(self) -> None:
+        self.assertIn("flat cel shaded", build_caption("zqylan"))
 
-    def test_caption_leaves_out_codex_prose(self) -> None:
-        caption = build_caption(_character("kurvinox"), "bmb01")
+    def test_caption_says_nothing_the_token_could_hide_behind(self) -> None:
+        caption = build_caption("zqylan")
+        self.assertNotIn("kurvinox", caption)
         self.assertNotIn("dlugi ogon", caption)
-        self.assertNotIn("niebieskie luski", caption)
 
 
 class TestImagePreparation(unittest.TestCase):
@@ -92,7 +91,7 @@ class TestDatasetBuilder(unittest.TestCase):
                 references_dir=root / "cards",
                 characters_dir=root / "characters",
                 dataset_dir=root / "dataset",
-                token_prefix="bmb",
+                token_vocabulary_path=Path("training/configs/identity_tokens.toml"),
                 image_size=64,
                 minimum_references=2,
         )
@@ -116,8 +115,8 @@ class TestDatasetBuilder(unittest.TestCase):
 
     def test_caption_file_carries_the_token(self) -> None:
         build_dataset(self._config)
-        caption = (self._config.dataset_dir / "bmb01_00.txt").read_text(encoding="utf-8")
-        self.assertTrue(caption.startswith("bmb01,"))
+        caption = (self._config.dataset_dir / "zqylan_00.txt").read_text(encoding="utf-8")
+        self.assertTrue(caption.startswith("zqylan,"))
 
     def test_token_map_is_written_next_to_the_dataset(self) -> None:
         report = build_dataset(self._config)
@@ -134,6 +133,58 @@ class TestDatasetBuilder(unittest.TestCase):
         with self.assertRaises(ValueError) as raised:
             build_dataset(config)
         self.assertIn("empty", str(raised.exception))
+
+
+class TestSingleCharacterDataset(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self._directory = tempfile.TemporaryDirectory()
+        root = Path(self._directory.name)
+        self._config = DatasetConfig(
+                references_dir=root / "cards",
+                characters_dir=root / "characters",
+                dataset_dir=root / "dataset",
+                token_vocabulary_path=Path("training/configs/identity_tokens.toml"),
+                image_size=64,
+                minimum_references=2,
+        )
+        from codex.character_store import CharacterStore
+        store = CharacterStore(self._config.characters_dir)
+        for slug in ("aaa", "kurvinox"):
+            store.save(_character(slug))
+            character_dir = self._config.references_dir / slug
+            character_dir.mkdir(parents=True)
+            for index in range(3):
+                card = numpy.zeros((20, 10, 4), dtype=numpy.uint8)
+                card[:, :, 3] = 255
+                cv2.imwrite(str(character_dir / f"{index:02d}.png"), card)
+
+    def tearDown(self) -> None:
+        self._directory.cleanup()
+
+    def test_only_the_chosen_character_reaches_the_dataset(self) -> None:
+        report = build_single_character_dataset(self._config, "kurvinox")
+        self.assertEqual(1, report.characters_written)
+        self.assertEqual(3, report.images_written)
+
+    def test_token_stays_the_one_the_full_cast_would_give(self) -> None:
+        build_single_character_dataset(self._config, "kurvinox")
+        self.assertEqual(3, len(list(self._config.dataset_dir.glob("vothrek_*.png"))))
+
+    def test_token_map_stays_inside_the_dataset_directory(self) -> None:
+        report = build_single_character_dataset(self._config, "kurvinox")
+        self.assertEqual(self._config.dataset_dir, report.tokens_path.parent)
+
+    def test_unknown_slug_raises_naming_the_slug(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            build_single_character_dataset(self._config, "nobody")
+        self.assertIn("nobody", str(raised.exception))
+
+    def test_character_below_the_minimum_raises(self) -> None:
+        config = DatasetConfig(**{**self._config.__dict__, "minimum_references": 10})
+        with self.assertRaises(ValueError) as raised:
+            build_single_character_dataset(config, "kurvinox")
+        self.assertIn("kurvinox", str(raised.exception))
 
 
 if __name__ == "__main__":

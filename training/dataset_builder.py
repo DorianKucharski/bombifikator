@@ -102,3 +102,26 @@ def write_token_map(tokens_path: Path, tokens: dict[str, str]) -> Path:
     with tokens_path.open("wb") as handle:
         tomli_w.dump({"tokens": dict(sorted(tokens.items()))}, handle)
     return tokens_path
+
+
+def build_single_character_dataset(config: DatasetConfig, slug: str) -> DatasetReport:
+    characters = trainable_characters(tuple(CharacterStore(config.characters_dir).load_all()))
+    selected = next((character for character in characters if character.slug == slug), None)
+    if selected is None:
+        raise ValueError(f"no character with full reference coverage for slug {slug} in {config.characters_dir}")
+
+    tokens = tokens_by_slug(read_token_vocabulary(config.token_vocabulary_path), characters)
+    token = tokens[slug]
+    ensure_directory(config.dataset_dir)
+    images_written = _write_character(config, selected, token)
+    if images_written == 0:
+        raise ValueError(f"character {slug} has fewer than {config.minimum_references} references "
+                         f"in {config.references_dir / slug}")
+
+    LOGGER.info("character written: slug=%s token=%s images=%d", slug, token, images_written)
+    return DatasetReport(
+            characters_written=1,
+            images_written=images_written,
+            characters_skipped=(),
+            tokens_path=write_token_map(config.dataset_dir / TOKEN_MAP_FILE_NAME, {slug: token}),
+    )
