@@ -16,31 +16,129 @@ Plan całości: `/home/dorian/.claude/plans/mutable-strolling-otter.md` (zatwier
 - Materiału źródłowego nie ma lokalnie, wszystko trzeba pozyskać z sieci.
 - Kwestia prawna spisana w `LICENSE`: kod MIT, dane i wagi nie są dystrybuowane, użytek prywatny.
 
-## Stan na 2026-09-01, tu wracamy
+## Stan na 2026-09-07, tu wracamy
 
-Etap 2 przebudowany od zera i trwa trening LoRA tożsamości v3. Pod: `216.243.220.130`, port `10427`,
-alias `runpod` w `~/.ssh/config` (klucz `~/.ssh/dorian`). Port zmienia się po każdym restarcie poda.
+Tożsamość wchodzi w wagi. Rozstrzygnęła to LoRA jednej postaci: Kapitan Bomba, token `klombu`,
+dwadzieścia ręcznie wybranych kadrów, rank 32, 2000 kroków, zapis co 200.
+Najlepszy jest **krok 1400**, `data/loras/klombu_v1/bombifikator_klombu_lora_v1_000001400.safetensors`.
+Trzyma srebrny hełm, brązową brodę, biały mundur z czerwoną odznaką i czarne buty na wszystkich
+czterech promptach naraz, także na pustyni i na czerwonej kanapie. Od 1600 w górę idzie
+przetrenowanie: broda znika, twarz robi się jednolicie pomarańczowa, hełm zielenieje.
+Próbki ze wszystkich jedenastu zapisów leżą w `data/training/samples_klombu_v1`.
 
-**Co robić po powrocie.** Sprawdź, czy trening żyje i na którym kroku jest:
-`ssh runpod 'tail -c 250 /workspace/logs/identity_v3.log | tr "\r" "\n" | tail -1; df -h /root | tail -1'`.
-Jeśli skończył, checkpointy leżą w `/root/training/output/bombifikator_identity_lora_v3/`
-(trzymane są cztery ostatnie) i trzeba je NATYCHMIAST ściągnąć na dół, bo `/root` ginie razem z podem.
-Próbki ściągam do `data/training/samples_v3/`, po kroku i tokenie z nazwy pliku.
+**Co to znaczy.** Wąskim gardłem jest jakość kart referencyjnych, nie tokenizacja, nie format podpisu
+i nie liczba kroków. Dwadzieścia dobranych ręcznie kadrów dało to, czego 1414 zebranych automatycznie
+nie dało przez cztery przebiegi. Ręczny przegląd wszystkich 60 kart `tytus-bomba` zostawił 20 sztuk.
+Odpadło 40: nieusunięte tło (kanapa, pustynia, ciemne i niebieskie sceny, wyblakłe kadry z napisami),
+blondyn bez hełmu jako osobny wygląd tej samej postaci oraz obca postać w czarnym hełmie z napisem PKS.
+Zapis, które kadry zostały, jest w `data/training/single_klombu_clean/kept_from_cards.txt`.
 
-**Trening v3**, konfiguracja w `training/configs/identity_lora.yaml`:
-1465 obrazów, 32 postacie, rank 128, alpha 128, 10000 kroków (7 epok), sample co 500.
-Wystartował, padł na kroku 1500 na `No space left on device` przy zapisie checkpointu, wznowiony
-od 1000 po zwolnieniu miejsca. Ostatnia widziana ocena: krok 1500, czyli pełna epoka. Poza działa
-poprawnie, styl się buduje, tożsamość jeszcze nie (Kapitan Bomba wychodzi jako umięśniony typ
-w opasce zamiast blondyna z wielką szczęką). W v2 tożsamość układała się po trzech do pięciu epok,
-więc tutaj odpowiednik wypada koło kroku 4500-7500. Kolejna kontrola miała być na 4500.
+**Trening jednej postaci.** `training single-dataset --slug <slug> --out <katalog>` buduje zbiór
+dla jednej postaci, tokeny liczy po pełnej obsadzie, więc slug dostaje ten sam token co zawsze,
+a mapa tokenów ląduje w katalogu zbioru, żeby nie nadpisać wspólnego `data/training/tokens.toml`.
+Konfiguracja przebiegu to `training/configs/single_character_lora.yaml`.
+`scripts/start_training.sh` bierze teraz nazwę pliku konfiguracji z `CONFIG`, więc
+`RUN_NAME=... CONFIG=training/configs/single_character_lora.yaml scripts/start_training.sh`.
 
-**Mapa tokenów jest inna niż w v2.** Obowiązuje ta z poda, skopiowana do `data/training/tokens.toml`:
-`bmb31` to `tytus-bomba` czyli Kapitan Bomba, `bmb08` to `chorazy-torpeda`, `bmb18` to `kurvinox`,
-`bmb20` to `kutnapletes`. Prompty próbek w configu celują w `bmb31` (dwa razy), `bmb08` i `bmb20`.
-Rozjazd wziął się stąd, że lokalny kodeks miał stare oznaczenia pokrycia i `training dataset`
-wybrał lokalnie inny zestaw postaci niż na podzie. Zawsze bierz `tokens.toml` z tego przebiegu,
-który faktycznie trenował.
+**Dlaczego v5 nie wystarczył.** Gołe podpisy `{token}, {styl}` niczego nie naprawiły. Cztery prompty
+próbek na wspólnym ziarnie dają na kroku 6000 jeden archetyp, a rozjazd pikseli spada z 58 na kroku 0
+do 14 na 6000, przy minimum 3,9 między dwoma tokenami. Trening zbliżał tokeny do siebie zamiast je
+rozdzielać. Checkpointy leżą w `data/loras/v5`, próbki w `data/training/samples_v5`.
+
+**Kolejne kroki.** Przenieść kurację na resztę obsady: `background_remover` przepuszcza kadr,
+w którym `rembg` wyciął postać razem z tłem, a klastry mieszają różne wyglądy tej samej postaci
+pod jednym slugiem. Dopiero czyste karty mają sens jako wejście do LoRA na całą obsadę.
+
+## Stan na 2026-09-06
+
+Trwa trening v5, pierwszy z gołymi podpisami, puszczony od nowa. Pierwsze podejście z 5 września
+przepadło razem z podem: po restarcie `/root` przyszedł pusty, bez ai-toolkit, bez cache modeli,
+bez zbioru i bez ani jednego checkpointu. Ściągaj checkpointy w trakcie przebiegu, nie na końcu.
+
+Pod: `69.8.146.165`, port `11188`, alias `runpod` w `~/.ssh/config` (klucz `~/.ssh/dorian`,
+nie `id_ed25519`). Karta to RTX PRO 6000 Blackwell w plastrze MIG 48 GB, dysk kontenera 130 GB.
+Host i port zmieniają się po każdym restarcie poda.
+
+**Co robić po powrocie.** Sprawdź, na którym kroku jest trening:
+`ssh runpod 'tail -c 250 /root/logs/bombifikator_identity_lora_v5.log | tr "\r" "\n" | tail -1; df -h /root | tail -1'`.
+Tempo to ok. 3,3 s na krok, czyli 6000 kroków plus dwanaście serii próbek wychodzi na jakieś sześć godzin.
+Przebieg wystartował 6 września ok. 12:20.
+Checkpointy leżą w `/root/training/output/bombifikator_identity_lora_v5/`, dwanaście zapisów co 500 kroków,
+i trzeba je ściągnąć razem z `samples/` (`RUN_NAME=bombifikator_identity_lora_v5 scripts/pull_training.sh`),
+zanim pod zniknie.
+
+**Dlaczego v4 nie wystarczył.** Rozdzielne tokeny naprawiły tokenizację, ale nie tożsamość.
+Ocena kroku 4500 na wszystkich 32 tokenach jest w `data/training/previews_v4_4500/`, a rozstrzygająca
+kontrola w `data/training/control_v4_4500/`. Każdy plik kontrolny to trzy rzędy: podpis pełny,
+sam opis wyglądu i sam token. Między postaciami różnica pikseli wynosi 30-43 na 255 dla podpisu pełnego,
+32-43 dla samego opisu i tylko 6-8 dla samego tokenu. Czyli całą tożsamość niósł tekstowy opis wyglądu
+doklejony do podpisu, a token dalej nie znaczył nic. To był dokładnie ten opis, który v4 dodał,
+żeby pomóc.
+
+**Co zmienia v5.** Podpis to `{token}, {styl}` i nic więcej, `build_caption` nie przyjmuje już postaci.
+Skoro opis wyglądu odbierał tokenowi pracę, token dostaje ją z powrotem, bo nie ma alternatywy.
+Zbiór przebudowany, `data/training/identity` to te same 1414 obrazów z nowymi podpisami,
+poprzednie leżą w `data/training/identity_v4_old`. `walk_seed` zbite na `false`, żeby cztery prompty
+próbek dzieliły ziarno i dało się je porównywać między tokenami, bo chodzące ziarno myliło mnie
+przy v3 i v3b.
+
+**Stawianie poda od zera, kolejność, która działa.** `scripts/bootstrap_pod.sh` stawia środowisko
+do inferencji, nie do treningu, i nie tknie ai-toolkit. Trening wymaga ręcznie:
+`apt-get install -y rsync` (obrazy RunPoda go nie mają, a wszystkie skrypty na nim stoją),
+`git clone --depth 1 https://github.com/ostris/ai-toolkit.git /root/ai-toolkit`,
+własny venv z `torch==2.8.0 torchvision torchaudio==2.8.0` z indeksu `cu128` (bez przypiętego
+torchaudio dociąga się 2.11 i nie ładuje rozszerzenia), potem `pip install -r requirements.txt`.
+Python na obrazie to 3.11, więc wheel Nunchaku cp312 tu nie wejdzie, ale do treningu nie jest potrzebny.
+Zbiór idzie na górę przez `tar czf - -C data/training identity | ssh runpod 'tar xzf - -C /root/training'`,
+zanim rsync w ogóle istnieje na podzie, albo rsyncem po jego instalacji, ale wtedy katalogi docelowe
+trzeba założyć wcześniej (`mkdir -p /root/training/identity /root/training/configs /root/logs`),
+bo rsync nie tworzy brakujących rodziców. Qwen-Image ai-toolkit ściąga sam przy pierwszym
+uruchomieniu, ok. 46 GB i kilkanaście minut. `HF_HOME=/root/hf` ze `scripts/start_training.sh`
+jest martwe, wagi lądują w `/root/ai-toolkit`. Ten sam dysk, więc nie boli.
+
+**Dlaczego v2, v3 i v3b były do wyrzucenia.** Nie z powodu liczby kroków, tylko dlatego, że tożsamość
+nigdy się nie nauczyła. Ocena v3b krok 4500 na wszystkich 32 tokenach (`training preview --lora`)
+pokazała, że prawie wszystkie tokeny zwijają się do trzech archetypów, a `bmb31` przy 60 referencjach
+daje na czterech ziarnach cztery różne postacie. Kontrola rozstrzygnęła sprawę: `bmb31` i `bmb08`
+w formacie podpisu treningowego, przy tych samych ziarnach, dają praktycznie ten sam obraz
+(średnia różnica pikseli 9 na 255). Token nie wpływał na wynik w ogóle, decydowało ziarno.
+LoRA nauczyła się stylu serialu i uśrednienia zbioru.
+
+Winne były dwie rzeczy naraz. Tokeny `bmb01` do `bmb32` dzieliły prefiks i różniły się dwiema cyframi,
+więc po tokenizacji text encoder widział dla wszystkich 32 postaci niemal identyczne warunkowanie.
+Podpisy poza tokenem były dosłownie takie same (`{token}, a {species}, {styl}`), a kodeks miał
+opisy wyglądu, których nikt nie używał.
+
+**Co zmienia v4.** Tokeny to rozdzielne pseudosłowa z `training/configs/identity_tokens.toml`
+(`klombu` to Kapitan Bomba, `tuvvel` to Torpeda), przypisywane po kolejności slugów.
+`training/token_vocabulary.py` odrzuca duplikaty i tokeny dzielące trzyznakowy prefiks, więc błąd v3
+nie wróci po cichu. Podpisy niosły karnację, strój i trzy pierwsze cechy szczególne z kodeksu,
+składane przez `codex/character_appearance.py`. To właśnie ten opis okazał się szkodliwy i v5 go
+z podpisu wyrzucił, ale `character_appearance` dalej obsługuje podgląd (`training/token_preview.py`)
+i inferencję (`transform/character_prompt.py`).
+Zbiór to 1414 obrazów, 32 postacie, `max_step_saves_to_keep: 12` zamiast 3, bo dysk wreszcie pozwala
+i wybór checkpointu przestaje być loterią.
+
+**Cztery pułapki przy uruchamianiu, wszystkie już trafione.**
+Pierwsza: `nohup python ... &` wewnątrz `ssh POD 'bash -c ...'` nie przeżywa zamknięcia sesji,
+bo backgroundowany jest cały łańcuch, nie sam python. Dlatego `setsid nohup ... < /dev/null &`.
+Druga: dysk kontenera. Jeden checkpoint to 2,36 GB, `optimizer.pt` 2,39 GB, dwanaście zapisów
+to ok. 31 GB. Obecny pod ma 130 GB, poprzedni miał 30 GB i dwa przebiegi na tym padły.
+Trzecia: wolumen sieciowy nie jest gwarantowany. Po jednym restarcie `/workspace` przyszedł jako pusty
+dysk 20 GB, bez ai-toolkit, bez cache modeli i bez zbioru. Dlatego wszystko idzie teraz na `/root`,
+a `scripts/start_training.sh` używa `/root/training/configs`, `/root/logs` i `HF_HOME=/root/hf`.
+Czwarta: obraz poda potrafi mieć torcha, który nie ma kerneli na Blackwella. Ten przyszedł
+z 2.4.1+cu124, `torch.cuda.is_available()` zwracało `True`, a każdy `matmul` na GPU się wywalał.
+Trzeba postawić własny venv z torchem 2.8.0+cu128, do tego `torchaudio==2.8.0` przypięty z tego samego
+indeksu, bo bez wersji dociąga się 2.11 i nie ładuje rozszerzenia. `rsync` na tym obrazie też nie ma.
+
+**Mapa tokenów.** Obowiązuje `data/training/tokens.toml` z przebiegu, który faktycznie trenował.
+Przy v4 generuje ją `training dataset` razem ze zbiorem, więc jest spójna z podpisami.
+
+**Ocena LoRA wymaga poda z dyskiem kontenera co najmniej 120 GB**, bo transformer bf16 waży 40,9 GB.
+`training preview --lora <plik>` renderuje po cztery próbki na każdy z 32 tokenów, ok. 5 minut
+na postać, czyli niecałe 3 godziny na komplet. To jedyna ocena, która odpowiada na pytanie o tożsamość;
+cztery prompty próbek z chodzącym ziarnem wprowadziły mnie w błąd przy v3 i v3b.
 
 **Wyniki przebudowy etapu 2:** 28676 kadrów z 16071 klatek, 509 klastrów, 13200 kadrów w klastrach,
 223 klastry nazwane, 35 postaci, 1499 referencji, z tego 32 postacie z pokryciem `FULL`.
@@ -59,11 +157,7 @@ Kapitan Bomba ma 60 referencji zamiast 16 i jego zestaw jest jednolity tożsamo�
 
 **Co zostaje nierozwiązane:** na ok. jednej czwartej kart tło nie jest usunięte (kanapa, pustynia,
 ciemne sceny). `background_removed` łapie tylko całkowitą porażkę `rembg`, a tu model wycina blob
-razem z tłem, więc alfa nie jest w pełni nieprzezroczysta. Do poprawy przed ewentualnym v4.
-
-**Ocena LoRA wymaga poda z dyskiem kontenera co najmniej 120 GB**, bo transformer bf16 waży 40,9 GB.
-Komenda jest gotowa: `training preview --lora <plik>` renderuje po cztery próbki na każdy z 32 tokenów
-i składa arkusz na postać. Potem `transform photo` end to end.
+razem z tłem, więc alfa nie jest w pełni nieprzezroczysta. Do poprawy przed ewentualnym v5.
 
 ## Stan na 2026-08-31
 
@@ -244,12 +338,15 @@ Git: repozytorium zainicjowane, ZERO commitów. Nic nie commitowałem, bo użytk
 
 ## Kolejne kroki, w tej kolejności
 
-1. Dokończyć trening v3 i ocenić próbki na kroku 4500, potem na 7500 i na końcu.
-   Wybrać najlepszy checkpoint, nie automatycznie ostatni: w v2 różne tokeny miały różne optimum.
-2. Ściągnąć wybrany checkpoint do `data/loras/` i podłożyć jako `identity.safetensors`.
-3. Ocena na podzie z dyskiem co najmniej 120 GB: `training preview --lora`, potem `transform photo`
+1. Dokończyć trening v5 i ściągnąć wszystkie dwanaście checkpointów razem z próbkami, zanim pod zniknie.
+2. Ocenić przez `training preview --lora` na całych 32 tokenach, plus kontrola z trzema rzędami podpisu.
+   Kryterium jest jedno: czy sam token przy tym samym ziarnie daje różne postacie. Przy v4 różnica
+   wynosiła 6-8 na 255, więc dopiero wyraźnie wyższa liczba znaczy, że tożsamość weszła w wagi.
+3. Wybrany checkpoint podłożyć w `data/loras/` jako `identity.safetensors`, potem `transform photo`
    na zdjęciach z `data/input`.
-4. Jeśli wyniki są słabe, przed v4 poprawić wykrywanie nieusuniętego tła w kartach referencyjnych.
+4. Jeśli tożsamość dalej nie trzyma, następną dźwignią jest osobna LoRA na postać. Angielski opis
+   wyglądu w kodeksie odpada, bo v4 pokazał, że opis w podpisie właśnie jest problemem, nie lekarstwem.
+5. Do poprawy przed ewentualnym v6: na ok. jednej czwartej kart tło nie jest usunięte.
 
 ## Konwencje w tym repo
 
