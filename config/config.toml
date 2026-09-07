@@ -96,6 +96,7 @@ min_label_confidence = 0.6
 remove_background = true
 identity_deviation_tolerance = 2.0
 max_opaque_ratio = 0.9
+max_border_opaque_ratio = 0.35
 
 [transform]
 output_dir = "data/output"

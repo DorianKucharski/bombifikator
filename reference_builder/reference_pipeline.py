@@ -10,7 +10,7 @@ import numpy
 from codex.character_models import Character, ReferenceCoverage
 from codex.character_store import CharacterStore
 from reference_builder.background_remover import BackgroundRemover
-from reference_builder.cutout_quality import background_removed
+from reference_builder.cutout_quality import background_removed, cutout_clear_of_frame
 from reference_builder.cluster_store import read_clusters
 from reference_builder.coverage_marker import coverage_of, mark_coverage
 from reference_builder.crop_store import CropStore
@@ -72,7 +72,7 @@ def _selected_crop_ids(card: ReferenceCard, crop_id_rows: dict[str, int], embedd
 
 
 def _reference_images(crop_store: CropStore, crop_ids: tuple[str, ...], remover: BackgroundRemover | None,
-                      max_opaque_ratio: float) -> tuple[tuple[numpy.ndarray, ...], tuple[str, ...]]:
+                      config: SelectionConfig) -> tuple[tuple[numpy.ndarray, ...], tuple[str, ...]]:
     images = []
     readable_ids = []
     for crop_id in crop_ids:
@@ -84,7 +84,9 @@ def _reference_images(crop_store: CropStore, crop_ids: tuple[str, ...], remover:
             readable_ids.append(crop_id)
             continue
         cut = remover.cut_out(image)
-        if not background_removed(cut, max_opaque_ratio):
+        if not background_removed(cut, config.max_opaque_ratio):
+            continue
+        if not cutout_clear_of_frame(cut, config.max_border_opaque_ratio):
             continue
         images.append(cut)
         readable_ids.append(crop_id)
@@ -115,7 +117,7 @@ def build_references(paths: ReferencePaths, characters_dir: Path, config: Select
     for slug in sorted(cards):
         card = cards[slug]
         selected = _selected_crop_ids(card, crop_id_rows, embeddings, config)
-        images, readable_ids = _reference_images(crop_store, selected, remover, config.max_opaque_ratio)
+        images, readable_ids = _reference_images(crop_store, selected, remover, config)
         coverage = coverage_of(len(images), config.full_reference_threshold, config.thin_reference_threshold)
         coverage_counts[coverage] += 1
         if not images:

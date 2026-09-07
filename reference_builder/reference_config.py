@@ -133,6 +133,7 @@ class SelectionConfig:
     remove_background: bool
     identity_deviation_tolerance: float
     max_opaque_ratio: float
+    max_border_opaque_ratio: float
 
     @classmethod
     def from_config_provider(cls, config_provider: ConfigProvider) -> "SelectionConfig":
@@ -148,4 +149,6 @@ class SelectionConfig:
                 identity_deviation_tolerance=config_provider.get_float(
                         "reference_builder.selection.identity_deviation_tolerance", 2.0),
                 max_opaque_ratio=config_provider.get_float("reference_builder.selection.max_opaque_ratio", 0.9),
+                max_border_opaque_ratio=config_provider.get_float(
+                        "reference_builder.selection.max_border_opaque_ratio", 0.35),
         )
