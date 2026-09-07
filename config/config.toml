@@ -132,7 +132,7 @@ plate_feather_pixels = 25
 [training]
 tokens_path = "data/training/tokens.toml"
 dataset_dir = "data/training/identity"
-token_prefix = "bmb"
+token_vocabulary_path = "training/configs/identity_tokens.toml"
 image_size = 1024
 minimum_references = 10
 previews_dir = "data/training/previews"

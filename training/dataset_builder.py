@@ -12,6 +12,7 @@ from codex.character_store import CharacterStore
 from sharedkernel.logger import get_logger
 from sharedkernel.utils.paths import ensure_directory
 from training.caption_builder import build_caption, tokens_by_slug
+from training.token_vocabulary import read_token_vocabulary
 from training.training_config import DatasetConfig
 
 LOGGER = get_logger("training.dataset_builder")
@@ -54,7 +55,7 @@ def _write_character(config: DatasetConfig, character: Character, token: str) ->
     reference_paths = sorted((config.references_dir / character.slug).glob("*.png"))
     if len(reference_paths) < config.minimum_references:
         return 0
-    caption = build_caption(character, token)
+    caption = build_caption(token)
     written = 0
     for index, reference_path in enumerate(reference_paths):
         image = cv2.imread(str(reference_path), cv2.IMREAD_UNCHANGED)
@@ -74,7 +75,7 @@ def build_dataset(config: DatasetConfig) -> DatasetReport:
         raise ValueError(f"no character with full reference coverage in {config.characters_dir}")
     ensure_directory(config.dataset_dir)
 
-    tokens = tokens_by_slug(config.token_prefix, characters)
+    tokens = tokens_by_slug(read_token_vocabulary(config.token_vocabulary_path), characters)
     images_written = 0
     written_characters = 0
     skipped = []

@@ -4,15 +4,12 @@ from codex.character_models import Character
 from codex.drawing_style import STYLE_PHRASE
 
 
-def character_token(token_prefix: str, position: int) -> str:
-    return f"{token_prefix}{position:02d}"
-
-
-def tokens_by_slug(token_prefix: str, characters: tuple[Character, ...]) -> dict[str, str]:
+def tokens_by_slug(vocabulary: tuple[str, ...], characters: tuple[Character, ...]) -> dict[str, str]:
+    if len(vocabulary) < len(characters):
+        raise ValueError(f"token vocabulary holds {len(vocabulary)} tokens for {len(characters)} characters")
     ordered = sorted(characters, key=lambda character: character.slug)
-    return {character.slug: character_token(token_prefix, position)
-            for position, character in enumerate(ordered, start=1)}
+    return {character.slug: vocabulary[position] for position, character in enumerate(ordered)}
 
 
-def build_caption(character: Character, token: str) -> str:
-    return f"{token}, a {character.species}, {STYLE_PHRASE}"
+def build_caption(token: str) -> str:
+    return f"{token}, {STYLE_PHRASE}"

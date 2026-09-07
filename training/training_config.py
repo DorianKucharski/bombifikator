@@ -5,15 +5,13 @@ from pathlib import Path
 
 from sharedkernel.config_provider import ConfigProvider
 
-_TOKEN_PREFIX = "bmb"
-
 
 @dataclass(frozen=True)
 class DatasetConfig:
     references_dir: Path
     characters_dir: Path
     dataset_dir: Path
-    token_prefix: str
+    token_vocabulary_path: Path
     image_size: int
     minimum_references: int
 
@@ -23,7 +21,8 @@ class DatasetConfig:
                 references_dir=config_provider.get_path("reference_builder.references_dir", "data/references/cards"),
                 characters_dir=config_provider.get_path("codex.characters_dir", "data/codex/characters"),
                 dataset_dir=config_provider.get_path("training.dataset_dir", "data/training/identity"),
-                token_prefix=config_provider.get_str("training.token_prefix", _TOKEN_PREFIX),
+                token_vocabulary_path=config_provider.get_path("training.token_vocabulary_path",
+                                                               "training/configs/identity_tokens.toml"),
                 image_size=config_provider.get_int("training.image_size", 1024),
                 minimum_references=config_provider.get_int("training.minimum_references", 10),
         )
@@ -32,6 +31,7 @@ class DatasetConfig:
 @dataclass(frozen=True)
 class PreviewConfig:
     tokens_path: Path
+    characters_dir: Path
     previews_dir: Path
     samples_per_token: int
     sheet_grid_size: int
@@ -43,6 +43,7 @@ class PreviewConfig:
     def from_config_provider(cls, config_provider: ConfigProvider) -> "PreviewConfig":
         return cls(
                 tokens_path=config_provider.get_path("training.tokens_path", "data/training/tokens.toml"),
+                characters_dir=config_provider.get_path("codex.characters_dir", "data/codex/characters"),
                 previews_dir=config_provider.get_path("training.previews_dir", "data/training/previews"),
                 samples_per_token=config_provider.get_int("training.preview.samples_per_token", 4),
                 sheet_grid_size=config_provider.get_int("training.preview.sheet_grid_size", 2),

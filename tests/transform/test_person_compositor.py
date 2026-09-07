@@ -10,17 +10,7 @@ from transform.person_compositor import (crop_to_alpha, fitted_into, largest_com
                                           paste_character)
 from transform.person_eraser import dilated
 from transform.render_size import render_size
-from codex.character_models import (AgeGroup, AppearanceTraits, Build, Character, PersonDescription, Prominence, Sex)
-
-_CHARACTER = Character(
-        slug="kurvinox",
-        canonical_name="Kurvinox",
-        species="kurvinox",
-        sex=Sex.MALE,
-        age_group=AgeGroup.ADULT,
-        prominence=Prominence.RECURRING,
-        appearance=AppearanceTraits(build=Build.REPTILIAN, distinguishing=("dlugi ogon",), outfit="mundur"),
-)
+from codex.character_models import AgeGroup, PersonDescription, Sex
 
 _DESCRIPTION = PersonDescription(
         person_index=0,
@@ -136,19 +126,19 @@ class TestRenderSize(unittest.TestCase):
 class TestCharacterPrompt(unittest.TestCase):
 
     def test_prompt_starts_with_the_trained_token(self) -> None:
-        self.assertTrue(build_character_prompt(_CHARACTER, _DESCRIPTION, "bmb16").startswith("bmb16,"))
+        self.assertTrue(build_character_prompt(_DESCRIPTION, "bmb16").startswith("bmb16,"))
 
     def test_prompt_carries_the_pose(self) -> None:
-        self.assertIn("stoi bokiem", build_character_prompt(_CHARACTER, _DESCRIPTION, "bmb16"))
+        self.assertIn("stoi bokiem", build_character_prompt(_DESCRIPTION, "bmb16"))
 
     def test_prompt_carries_the_facing(self) -> None:
-        self.assertIn("w lewo", build_character_prompt(_CHARACTER, _DESCRIPTION, "bmb16"))
+        self.assertIn("w lewo", build_character_prompt(_DESCRIPTION, "bmb16"))
 
     def test_prompt_demands_a_plain_background(self) -> None:
-        self.assertIn("plain white background", build_character_prompt(_CHARACTER, _DESCRIPTION, "bmb16"))
+        self.assertIn("plain white background", build_character_prompt(_DESCRIPTION, "bmb16"))
 
     def test_prompt_forbids_invented_props(self) -> None:
-        self.assertIn("no props", build_character_prompt(_CHARACTER, _DESCRIPTION, "bmb16"))
+        self.assertIn("no props", build_character_prompt(_DESCRIPTION, "bmb16"))
 
 
 if __name__ == "__main__":

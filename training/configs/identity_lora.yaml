@@ -1,7 +1,7 @@
 ---
 job: extension
 config:
-  name: "bombifikator_identity_lora_v3"
+  name: "bombifikator_identity_lora_v5"
   process:
     - type: 'sd_trainer'
       training_folder: "/root/training/output"
@@ -13,9 +13,9 @@ config:
       save:
         dtype: float16
         save_every: 500
-        max_step_saves_to_keep: 4
+        max_step_saves_to_keep: 12
       datasets:
-        - folder_path: "/workspace/training/identity"
+        - folder_path: "/root/training/identity"
           caption_ext: "txt"
           caption_dropout_rate: 0.0
           shuffle_tokens: false
@@ -24,7 +24,7 @@ config:
       train:
         batch_size: 1
         cache_text_embeddings: true
-        steps: 10000
+        steps: 6000
         gradient_accumulation: 1
         train_unet: true
         train_text_encoder: false
@@ -48,13 +48,13 @@ config:
         width: 1024
         height: 1024
         prompts:
-          - "bmb31, flat cel shaded cartoon character with heavy black outlines on a plain white background"
-          - "bmb08, flat cel shaded cartoon character with heavy black outlines on a plain white background"
-          - "bmb31, standing with both arms raised, flat cel shaded cartoon character with heavy black outlines on a plain white background"
-          - "bmb20, sitting with hands on knees, flat cel shaded cartoon character with heavy black outlines on a plain white background"
+          - "klombu, flat cel shaded cartoon character with heavy black outlines on a plain white background"
+          - "tuvvel, flat cel shaded cartoon character with heavy black outlines on a plain white background"
+          - "jastrel, flat cel shaded cartoon character with heavy black outlines on a plain white background"
+          - "mardush, flat cel shaded cartoon character with heavy black outlines on a plain white background"
         neg: "photograph, photorealistic skin, blurry, scenery"
         seed: 42
-        walk_seed: true
+        walk_seed: false
         guidance_scale: 3
         sample_steps: 25
 meta:

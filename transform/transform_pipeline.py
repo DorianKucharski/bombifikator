@@ -121,8 +121,7 @@ def transform_photo(
         person = people_by_index[assignment.person_index]
         rendered = paint_character(
                 painter,
-                build_character_prompt(characters_by_slug[assignment.slug],
-                                       described[assignment.person_index][0], token),
+                build_character_prompt(described[assignment.person_index][0], token),
                 person.box.width,
                 person.box.height,
                 rendering.seed + assignment.person_index,
