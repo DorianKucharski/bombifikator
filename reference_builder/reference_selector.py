@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy
+from sklearn.cluster import AgglomerativeClustering
 
 
 def _pairwise_distances(embeddings: numpy.ndarray) -> numpy.ndarray:
@@ -15,16 +16,18 @@ def medoid_row(embeddings: numpy.ndarray) -> int:
     return int(numpy.argmin(_pairwise_distances(embeddings).sum(axis=1)))
 
 
-def rows_near_medoid(embeddings: numpy.ndarray, deviation_tolerance: float) -> tuple[int, ...]:
+def dominant_look_rows(embeddings: numpy.ndarray, look_distance_threshold: float) -> tuple[int, ...]:
     every_row = tuple(range(len(embeddings)))
     if len(embeddings) <= 2:
         return every_row
-    distances = numpy.linalg.norm(embeddings - embeddings[medoid_row(embeddings)], axis=1)
-    median_distance = float(numpy.median(distances))
-    median_deviation = float(numpy.median(numpy.abs(distances - median_distance)))
-    limit = median_distance + deviation_tolerance * median_deviation
-    near = tuple(int(row) for row in numpy.flatnonzero(distances <= limit))
-    return near or every_row
+    looks = AgglomerativeClustering(
+            n_clusters=None,
+            distance_threshold=look_distance_threshold,
+            metric="cosine",
+            linkage="average",
+    ).fit_predict(embeddings)
+    dominant_look = numpy.argmax(numpy.bincount(looks))
+    return tuple(int(row) for row in numpy.flatnonzero(looks == dominant_look))
 
 
 def select_diverse_rows(embeddings: numpy.ndarray, count: int, seed_row: int) -> tuple[int, ...]:

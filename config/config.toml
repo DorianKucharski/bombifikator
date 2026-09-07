@@ -94,7 +94,7 @@ full_reference_threshold = 16
 thin_reference_threshold = 10
 min_label_confidence = 0.6
 remove_background = true
-identity_deviation_tolerance = 2.0
+look_distance_threshold = 0.45
 max_opaque_ratio = 0.9
 max_border_opaque_ratio = 0.35
 

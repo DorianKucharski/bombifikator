@@ -18,7 +18,7 @@ from reference_builder.embedding_store import load_embeddings
 from reference_builder.label_store import read_labels
 from reference_builder.reference_config import ReferencePaths, SelectionConfig
 from reference_builder.reference_models import CharacterCluster, ClusterLabel, CropRecord, ReferenceCard
-from reference_builder.reference_selector import medoid_row, rows_near_medoid, select_diverse_rows
+from reference_builder.reference_selector import dominant_look_rows, medoid_row, select_diverse_rows
 from reference_builder.reference_store import ReferenceStore
 from sharedkernel.logger import get_logger
 
@@ -64,7 +64,7 @@ def _selected_crop_ids(card: ReferenceCard, crop_id_rows: dict[str, int], embedd
     if not known:
         return ()
     rows = numpy.array([crop_id_rows[crop_id] for crop_id in known])
-    core_rows = rows_near_medoid(embeddings[rows], config.identity_deviation_tolerance)
+    core_rows = dominant_look_rows(embeddings[rows], config.look_distance_threshold)
     core_ids = tuple(known[row] for row in core_rows)
     core_embeddings = embeddings[rows[list(core_rows)]]
     selected = select_diverse_rows(core_embeddings, config.target_references, medoid_row(core_embeddings))

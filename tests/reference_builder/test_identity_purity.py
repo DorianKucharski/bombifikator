@@ -5,26 +5,29 @@ import unittest
 import numpy
 
 from reference_builder.cutout_quality import background_removed, cutout_clear_of_frame
-from reference_builder.reference_selector import rows_near_medoid
+from reference_builder.reference_selector import dominant_look_rows
 
 
-class TestRowsNearMedoid(unittest.TestCase):
+class TestDominantLookRows(unittest.TestCase):
 
-    def test_an_intruder_far_from_the_rest_is_dropped(self) -> None:
-        embeddings = numpy.array([[0.0, 0.0], [0.1, 0.0], [0.0, 0.1], [0.2, 0.1], [40.0, 40.0]])
-        self.assertNotIn(4, rows_near_medoid(embeddings, 2.0))
+    def _two_looks(self) -> numpy.ndarray:
+        helmet = numpy.array([[1.0, 0.0], [0.99, 0.1], [0.98, 0.12], [0.99, 0.08]])
+        blond = numpy.array([[0.0, 1.0], [0.1, 0.99]])
+        return numpy.vstack([helmet, blond])
 
-    def test_a_tight_group_keeps_every_row(self) -> None:
-        embeddings = numpy.array([[0.0, 0.0], [0.1, 0.0], [0.0, 0.1], [0.1, 0.1]])
-        self.assertEqual(4, len(rows_near_medoid(embeddings, 2.0)))
+    def test_the_smaller_look_is_dropped(self) -> None:
+        self.assertEqual((0, 1, 2, 3), dominant_look_rows(self._two_looks(), 0.45))
 
-    def test_two_rows_are_too_few_to_call_either_one_an_intruder(self) -> None:
-        embeddings = numpy.array([[0.0, 0.0], [40.0, 40.0]])
-        self.assertEqual((0, 1), rows_near_medoid(embeddings, 2.0))
+    def test_one_look_keeps_every_row(self) -> None:
+        embeddings = numpy.array([[1.0, 0.0], [0.99, 0.1], [0.98, 0.12]])
+        self.assertEqual((0, 1, 2), dominant_look_rows(embeddings, 0.45))
 
-    def test_a_tolerance_wide_enough_keeps_the_intruder(self) -> None:
-        embeddings = numpy.array([[0.0, 0.0], [0.1, 0.0], [0.0, 0.1], [0.2, 0.1], [40.0, 40.0]])
-        self.assertIn(4, rows_near_medoid(embeddings, 10000.0))
+    def test_two_rows_are_too_few_to_call_either_one_a_second_look(self) -> None:
+        embeddings = numpy.array([[1.0, 0.0], [0.0, 1.0]])
+        self.assertEqual((0, 1), dominant_look_rows(embeddings, 0.45))
+
+    def test_a_threshold_wide_enough_merges_the_looks(self) -> None:
+        self.assertEqual(6, len(dominant_look_rows(self._two_looks(), 2.0)))
 
 
 class TestBackgroundRemoved(unittest.TestCase):
