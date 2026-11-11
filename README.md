@@ -1,28 +1,28 @@
 # Bombifikator
 
-A Python pipeline that replaces people in real photos with characters from the Polish animated series *Kapitan Bomba*, while keeping the original composition (background, pose, lighting and number of people).
+Pipeline w Pythonie, który podmienia ludzi na prawdziwych zdjęciach na postacie z serialu animowanego *Kapitan Bomba*, zachowując oryginalną kompozycję (tło, pozę, oświetlenie i liczbę osób).
 
-This is a personal, experimental project for private use. See [LICENSE](LICENSE) for what is and is not covered.
+To osobisty, eksperymentalny projekt do prywatnego użytku. Co obejmuje licencja, a czego nie, opisuje [LICENSE](LICENSE).
 
-## How it works
+## Jak to działa
 
-The pipeline is split into stages, each exposed as a CLI sub-command:
+Pipeline jest podzielony na etapy, a każdy z nich to osobna podkomenda CLI:
 
-1. **Codex** (`codex`) - scrapes the series' wiki (MediaWiki API) and uses Claude to extract a structured character dictionary (one TOML file per character).
-2. **Harvester** (`harvester`) - downloads episodes with `yt-dlp`, splits them into shots and samples quality-filtered frames.
-3. **Reference builder** (`references`) - detects characters in frames, removes backgrounds, computes embeddings, clusters crops, labels clusters with Claude and selects reference cards per character.
-4. **Training** (`training`) - builds LoRA training datasets (full cast or a single character) and renders token previews. Training itself runs on a rented cloud GPU with ai-toolkit, using the YAML configs in `training/configs/`.
-5. **Transform** (`transform`) - detects people in an input photo, describes each person and picks a matching character with Claude, rebuilds the background and paints the character in with Qwen-Image-Edit (Nunchaku FP4 transformer) plus the trained LoRA.
+1. **Codex** (`codex`) - pobiera wiki serialu (MediaWiki API) i za pomocą Claude buduje ustrukturyzowany słownik postaci (jeden plik TOML na postać).
+2. **Harvester** (`harvester`) - ściąga odcinki przez `yt-dlp`, dzieli je na ujęcia i wybiera klatki przechodzące filtr jakości.
+3. **Reference builder** (`references`) - wykrywa postacie na klatkach, usuwa tło, liczy embeddingi, klastruje wycinki, opisuje klastry przez Claude i wybiera karty referencyjne dla każdej postaci.
+4. **Training** (`training`) - buduje zbiory treningowe LoRA (cała obsada albo pojedyncza postać) i renderuje podglądy tokenów. Sam trening idzie na wynajętym GPU w chmurze przez ai-toolkit, z konfiguracjami YAML z `training/configs/`.
+5. **Transform** (`transform`) - wykrywa ludzi na zdjęciu wejściowym, opisuje każdą osobę i dobiera do niej postać przez Claude, odtwarza tło i domalowuje postać przez Qwen-Image-Edit (transformer Nunchaku FP4) z wytrenowaną LoRA.
 
-## Tech stack
+## Technologie
 
 - Python, Typer (CLI), `unittest`
-- Anthropic API (structured outputs) for extraction, labeling and person description
+- Anthropic API (structured outputs) do ekstrakcji, opisywania klastrów i opisu osób
 - yt-dlp, PySceneDetect, OpenCV
 - PyTorch, Transformers, timm, scikit-learn, Ultralytics, rembg / onnxruntime
-- Diffusers (pinned to 0.36.0) + Nunchaku for Qwen-Image-Edit inference
+- Diffusers (przypięte do 0.36.0) + Nunchaku do inferencji Qwen-Image-Edit
 
-## Setup
+## Instalacja
 
 ```bash
 python -m venv .venv
@@ -30,17 +30,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Secrets are read from `config/.env` (gitignored) or from environment variables. Copy the template and fill it in:
+Sekrety są czytane z `config/.env` (w `.gitignore`) albo ze zmiennych środowiskowych. Skopiuj szablon i uzupełnij go:
 
 ```bash
 cp config/.env.example config/.env
 ```
 
-It expects `BOMBIFIKATOR_ANTHROPIC_API_KEY` and `BOMBIFIKATOR_HUGGINGFACE_TOKEN`. All other settings live in `config/config.toml`; any key can be overridden with a `BOMBIFIKATOR_<DOTTED_KEY_WITH_UNDERSCORES>` environment variable (e.g. `codex.max_category_depth` -> `BOMBIFIKATOR_CODEX_MAX_CATEGORY_DEPTH`).
+Potrzebne są `BOMBIFIKATOR_ANTHROPIC_API_KEY` i `BOMBIFIKATOR_HUGGINGFACE_TOKEN`. Pozostałe ustawienia są w `config/config.toml`; każdy klucz można nadpisać zmienną środowiskową `BOMBIFIKATOR_<KLUCZ_Z_KROPKAMI_ZAMIENIONYMI_NA_PODKREŚLNIKI>` (np. `codex.max_category_depth` -> `BOMBIFIKATOR_CODEX_MAX_CATEGORY_DEPTH`).
 
-## Usage
+## Użycie
 
-Run the CLI from the repository root:
+CLI uruchamia się z katalogu głównego repozytorium:
 
 ```bash
 python -m cli.main --help
@@ -59,44 +59,44 @@ python -m cli.main references label
 python -m cli.main references build
 
 python -m cli.main training dataset
-python -m cli.main training single-dataset --slug <character-slug> --out <dataset-dir>
-python -m cli.main training preview --lora <path-to-lora.safetensors>
+python -m cli.main training single-dataset --slug <slug-postaci> --out <katalog-zbioru>
+python -m cli.main training preview --lora <ścieżka-do-lora.safetensors>
 
-python -m cli.main transform photo <image> [--out <file>] [--seed <n>]
+python -m cli.main transform photo <zdjęcie> [--out <plik>] [--seed <n>]
 ```
 
-All generated data (wiki pages, frames, reference cards, datasets, LoRA weights, outputs) is written to `data/`, which is gitignored.
+Wszystkie wygenerowane dane (strony wiki, klatki, karty referencyjne, zbiory treningowe, wagi LoRA, wyniki) trafiają do `data/`, które jest w `.gitignore`.
 
-### Cloud training helpers
+### Skrypty do treningu w chmurze
 
-`scripts/` contains shell helpers for a remote GPU pod reachable over SSH (host alias configured via the `POD` variable, default `runpod`):
+W `scripts/` są skrypty powłoki do zdalnego poda GPU dostępnego przez SSH (alias hosta ustawia zmienna `POD`, domyślnie `runpod`):
 
-- `bootstrap_pod.sh` - set up the environment on a fresh pod
-- `sync_pod.sh` - upload code, secrets, input photos and reference cards
-- `start_training.sh` - upload a training config and start a run (`RUN_NAME`, `CONFIG`)
-- `pull_training.sh` - download checkpoints and samples (`RUN_NAME`)
+- `bootstrap_pod.sh` - przygotowanie środowiska na świeżym podzie
+- `sync_pod.sh` - wysłanie kodu, sekretów, zdjęć wejściowych i kart referencyjnych
+- `start_training.sh` - wysłanie konfiguracji treningu i start przebiegu (`RUN_NAME`, `CONFIG`)
+- `pull_training.sh` - pobranie checkpointów i próbek (`RUN_NAME`)
 
-## Tests
+## Testy
 
 ```bash
 python -m unittest discover -s tests -t .
 ```
 
-## Project structure
+## Struktura projektu
 
 ```
-cli/                Typer CLI entry point
-codex/              wiki scraping and character extraction
-harvester/          episode download and frame sampling
-reference_builder/  detection, clustering, labeling and reference selection
-training/           dataset building, captions, token vocabulary, training configs
-transform/          per-photo person replacement pipeline
-sharedkernel/       config provider, env loading, logging, Anthropic client, utilities
-config/             config.toml and .env.example
-scripts/            remote GPU pod helpers
-tests/              unit tests mirroring the source tree
+cli/                punkt wejścia CLI (Typer)
+codex/              pobieranie wiki i ekstrakcja postaci
+harvester/          pobieranie odcinków i wybór klatek
+reference_builder/  detekcja, klastrowanie, opisywanie i wybór referencji
+training/           budowa zbiorów, podpisy, słownik tokenów, konfiguracje treningu
+transform/          pipeline podmiany osób na pojedynczym zdjęciu
+sharedkernel/       konfiguracja, ładowanie env, logowanie, klient Anthropic, narzędzia
+config/             config.toml i .env.example
+scripts/            skrypty do zdalnego poda GPU
+tests/              testy jednostkowe odwzorowujące strukturę źródeł
 ```
 
-## License
+## Licencja
 
-Source code is MIT-licensed. *Kapitan Bomba* material and anything derived from it (scraped text, frames, reference images, trained weights, generated images) is not included and not covered by the license - see [LICENSE](LICENSE).
+Kod źródłowy jest na licencji MIT. Materiały z *Kapitana Bomby* i wszystko, co z nich powstało (pobrany tekst, klatki, obrazy referencyjne, wytrenowane wagi, wygenerowane obrazy), nie są dołączone do repozytorium i nie są objęte licencją - szczegóły w [LICENSE](LICENSE).
